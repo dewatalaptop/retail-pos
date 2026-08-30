@@ -1,20 +1,20 @@
 {
-  "name": "retail-pos-backend",
+  "name": "retail-pos-functions",
   "private": true,
-  "version": "0.1.0",
   "type": "commonjs",
-  "main": "dist/server.js",
+  "main": "lib/index.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc && node -e \"require('fs').copyFileSync('src/db/schema.sql','dist/db/schema.sql')\"",
-    "start": "node dist/server.js",
-    "seed": "tsx src/db/seed.ts",
-    "test": "vitest run"
+    "build": "node scripts/copy-backend.js && tsc && node scripts/copy-assets.js",
+    "deploy": "npm run build && firebase deploy --only functions"
+  },
+  "engines": {
+    "node": "22"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "express": "^4.21.1",
+    "firebase-functions": "^6.1.1",
     "jsonwebtoken": "^9.0.2",
     "zod": "^3.23.8"
   },
@@ -24,8 +24,6 @@
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.9.0",
-    "tsx": "^4.19.2",
-    "typescript": "^5.6.3",
-    "vitest": "^2.1.4"
+    "typescript": "^5.6.3"
   }
 }
