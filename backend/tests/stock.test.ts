@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { checkStockAvailability, deductStock, isLowStock } from "../src/lib/stock";
+import { aggregateQuantities, checkStockAvailability, deductStock, isLowStock } from "../src/lib/stock";
 
 describe("checkStockAvailability", () => {
   it("returns no shortfalls when stock covers every request", () => {
@@ -30,6 +30,36 @@ describe("deductStock", () => {
 
   it("throws instead of going negative", () => {
     expect(() => deductStock(2, 5)).toThrow();
+  });
+});
+
+describe("aggregateQuantities", () => {
+  it("sums quantities for the same product across multiple lines", () => {
+    const totals = aggregateQuantities([
+      { productId: 1, qty: 2 },
+      { productId: 2, qty: 1 },
+      { productId: 1, qty: 3 },
+    ]);
+    expect(totals.get(1)).toBe(5);
+    expect(totals.get(2)).toBe(1);
+  });
+
+  it("catches an oversell that only appears when duplicate lines are combined", () => {
+    // Stock is 5; two lines each individually request 3 (within stock), but
+    // combined they demand 6 — this must be flagged as a shortfall.
+    const totals = aggregateQuantities([
+      { productId: 1, qty: 3 },
+      { productId: 1, qty: 3 },
+    ]);
+    const shortfalls = checkStockAvailability(
+      [...totals.entries()].map(([productId, requestedQty]) => ({
+        productId,
+        name: "Test",
+        currentStock: 5,
+        requestedQty,
+      }))
+    );
+    expect(shortfalls).toEqual([{ productId: 1, name: "Test", available: 5, requested: 6 }]);
   });
 });
 

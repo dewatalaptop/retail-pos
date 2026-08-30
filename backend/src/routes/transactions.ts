@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { computeCartTotals, computeChange, computeLineTotal } from "../lib/pricing";
-import { checkStockAvailability, deductStock } from "../lib/stock";
+import { aggregateQuantities, checkStockAvailability, deductStock } from "../lib/stock";
 import { ProductRow, TransactionItemRow, TransactionRow } from "../types";
 
 export const transactionsRouter = Router();
@@ -40,13 +40,18 @@ transactionsRouter.post("/", (req, res) => {
     return { item, product };
   });
 
+  // A cart can list the same product on more than one line (e.g. different
+  // discounts per line), so shortfalls must be checked against the combined
+  // requested quantity per product, not each line independently — otherwise
+  // two lines each individually "within stock" could together oversell it.
+  const requestedByProduct = aggregateQuantities(
+    products.map(({ item }) => ({ productId: item.productId, qty: item.qty }))
+  );
   const shortfalls = checkStockAvailability(
-    products.map(({ item, product }) => ({
-      productId: product.id,
-      name: product.name,
-      currentStock: product.stock,
-      requestedQty: item.qty,
-    }))
+    [...requestedByProduct.entries()].map(([productId, requestedQty]) => {
+      const product = products.find((p) => p.product.id === productId)!.product;
+      return { productId, name: product.name, currentStock: product.stock, requestedQty };
+    })
   );
   if (shortfalls.length > 0) {
     return res.status(409).json({ error: "Stok tidak mencukupi", shortfalls });
@@ -88,6 +93,10 @@ transactionsRouter.post("/", (req, res) => {
       );
     const transactionId = txResult.lastInsertRowid;
 
+    // Tracks stock per product as it's deducted across lines, so a product
+    // appearing on multiple lines in the same sale is deducted cumulatively
+    // instead of each line overwriting from the same stale starting stock.
+    const runningStock = new Map<number, number>();
     for (const { item, product } of products) {
       const lineTotal = computeLineTotal({
         price: product.price,
@@ -99,7 +108,9 @@ transactionsRouter.post("/", (req, res) => {
          VALUES (?, ?, ?, ?, ?, ?, ?)`
       ).run(transactionId, product.id, product.name, product.price, item.qty, item.discountPercent, lineTotal);
 
-      const newStock = deductStock(product.stock, item.qty);
+      const stockBefore = runningStock.get(product.id) ?? product.stock;
+      const newStock = deductStock(stockBefore, item.qty);
+      runningStock.set(product.id, newStock);
       db.prepare("UPDATE products SET stock = ?, updated_at = datetime('now') WHERE id = ?").run(
         newStock,
         product.id

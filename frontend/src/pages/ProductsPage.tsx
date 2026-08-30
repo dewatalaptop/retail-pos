@@ -25,16 +25,27 @@ const emptyForm = {
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [listError, setListError] = useState("");
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
+
+  useEffect(() => {
+    api<{ categories: string[] }>("/products/categories").then((res) => setCategories(res.categories));
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryFilter]);
 
   async function load() {
-    const res = await api<{ products: Product[] }>("/products");
+    const params = new URLSearchParams();
+    if (categoryFilter) params.set("category", categoryFilter);
+    const res = await api<{ products: Product[] }>(`/products?${params}`);
     setProducts(res.products);
   }
 
@@ -58,7 +69,7 @@ export default function ProductsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setFormError("");
     try {
       if (editingId) {
         await api(`/products/${editingId}`, { method: "PUT", body: JSON.stringify(form) });
@@ -68,13 +79,24 @@ export default function ProductsPage() {
       resetForm();
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Gagal menyimpan produk");
+      setFormError(err instanceof ApiError ? err.message : "Gagal menyimpan produk");
     }
   }
 
   async function handleDelete(id: number) {
-    await api(`/products/${id}`, { method: "DELETE" });
-    load();
+    if (confirmingDeleteId !== id) {
+      setConfirmingDeleteId(id);
+      setTimeout(() => setConfirmingDeleteId((current) => (current === id ? null : current)), 3000);
+      return;
+    }
+    setConfirmingDeleteId(null);
+    setListError("");
+    try {
+      await api(`/products/${id}`, { method: "DELETE" });
+      load();
+    } catch (err) {
+      setListError(err instanceof ApiError ? err.message : "Gagal menghapus produk");
+    }
   }
 
   return (
@@ -131,7 +153,7 @@ export default function ProductsPage() {
             className="rounded border border-slate-300 px-2 py-1.5"
           />
         </div>
-        {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
+        {formError && <p className="mt-2 text-xs text-rose-600">{formError}</p>}
         <div className="mt-3 flex gap-2">
           <button type="submit" className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white">
             {editingId ? "Simpan" : "Tambah"}
@@ -145,6 +167,21 @@ export default function ProductsPage() {
       </form>
 
       <div className="lg:col-span-2">
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="mb-3 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-indigo-500"
+        >
+          <option value="">Semua kategori</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        {listError && (
+          <p className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-600">{listError}</p>
+        )}
         <table className="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm shadow-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
             <tr>
@@ -171,8 +208,13 @@ export default function ProductsPage() {
                   <button onClick={() => startEdit(p)} className="mr-2 text-xs text-indigo-600 hover:underline">
                     Edit
                   </button>
-                  <button onClick={() => handleDelete(p.id)} className="text-xs text-rose-500 hover:underline">
-                    Hapus
+                  <button
+                    onClick={() => handleDelete(p.id)}
+                    className={`text-xs hover:underline ${
+                      confirmingDeleteId === p.id ? "font-semibold text-rose-600" : "text-rose-500"
+                    }`}
+                  >
+                    {confirmingDeleteId === p.id ? "Yakin?" : "Hapus"}
                   </button>
                 </td>
               </tr>

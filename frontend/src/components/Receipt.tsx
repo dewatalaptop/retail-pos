@@ -22,7 +22,15 @@ function rp(n: number) {
   return `Rp${n.toLocaleString("id-ID")}`;
 }
 
-export default function Receipt({ data, onClose }: { data: ReceiptData; onClose: () => void }) {
+export default function Receipt({
+  data,
+  onClose,
+  closeLabel = "Transaksi baru",
+}: {
+  data: ReceiptData;
+  onClose: () => void;
+  closeLabel?: string;
+}) {
   return (
     <div className="mx-auto max-w-sm">
       <div id="receipt" className="rounded-lg border border-slate-200 bg-white p-5 font-mono text-sm shadow-sm">
@@ -86,7 +94,7 @@ export default function Receipt({ data, onClose }: { data: ReceiptData; onClose:
           onClick={onClose}
           className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
         >
-          Transaksi baru
+          {closeLabel}
         </button>
       </div>
     </div>

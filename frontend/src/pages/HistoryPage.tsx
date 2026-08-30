@@ -58,7 +58,7 @@ export default function HistoryPage() {
   }
 
   if (receipt) {
-    return <Receipt data={receipt} onClose={() => setReceipt(null)} />;
+    return <Receipt data={receipt} onClose={() => setReceipt(null)} closeLabel="Kembali ke riwayat" />;
   }
 
   return (

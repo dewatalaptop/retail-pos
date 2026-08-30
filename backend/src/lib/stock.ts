@@ -33,3 +33,17 @@ export function deductStock(currentStock: number, qty: number): number {
 export function isLowStock(stock: number, threshold: number): boolean {
   return stock <= threshold;
 }
+
+/**
+ * Sums requested quantities per product. A cart/sale can legitimately list
+ * the same product on more than one line (e.g. different discounts per
+ * line), so stock checks and deductions must be validated against the
+ * combined total per product, not each line in isolation.
+ */
+export function aggregateQuantities(items: { productId: number; qty: number }[]): Map<number, number> {
+  const totals = new Map<number, number>();
+  for (const { productId, qty } of items) {
+    totals.set(productId, (totals.get(productId) ?? 0) + qty);
+  }
+  return totals;
+}

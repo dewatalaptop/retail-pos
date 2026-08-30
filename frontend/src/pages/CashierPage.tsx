@@ -20,7 +20,9 @@ interface CartLine {
 
 export default function CashierPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<"tunai" | "kartu" | "qris">("tunai");
   const [taxRatePercent, setTaxRatePercent] = useState(0);
@@ -31,10 +33,14 @@ export default function CashierPage() {
 
   useEffect(() => {
     loadProducts();
+    api<{ categories: string[] }>("/products/categories").then((res) => setCategories(res.categories));
   }, []);
 
   async function loadProducts() {
-    const res = await api<{ products: Product[] }>(`/products?q=${encodeURIComponent(query)}`);
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (category) params.set("category", category);
+    const res = await api<{ products: Product[] }>(`/products?${params}`);
     setProducts(res.products);
   }
 
@@ -42,7 +48,7 @@ export default function CashierPage() {
     const t = setTimeout(loadProducts, 200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, category]);
 
   function addToCart(product: Product) {
     setCart((prev) => {
@@ -129,12 +135,26 @@ export default function CashierPage() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <div className="lg:col-span-2">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cari produk (nama atau SKU)..."
-          className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-        />
+        <div className="mb-3 flex gap-2">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Cari produk (nama atau SKU)..."
+            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+          />
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="rounded-lg border border-slate-300 px-2 py-2 text-sm outline-none focus:border-indigo-500"
+          >
+            <option value="">Semua kategori</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {products.map((p) => (
             <button

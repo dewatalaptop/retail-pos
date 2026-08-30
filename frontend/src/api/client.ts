@@ -32,6 +32,14 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    // Session expired or invalid: clear the stale token and force back to
+    // login instead of leaving the user stuck looking at raw error text on
+    // whatever page they were on. Skip this for the login call itself, where
+    // a 401 just means "wrong password" and the user is already there.
+    if (res.status === 401 && path !== "/auth/login") {
+      setToken(null);
+      window.location.href = "/login";
+    }
     throw new ApiError(data.error ?? `Request gagal (${res.status})`, res.status);
   }
   return data as T;

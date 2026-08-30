@@ -116,6 +116,15 @@ productsRouter.put("/:id", requireRole("admin"), (req, res) => {
 });
 
 productsRouter.delete("/:id", requireRole("admin"), (req, res) => {
-  db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
-  res.status(204).end();
+  try {
+    db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
+    res.status(204).end();
+  } catch (err: any) {
+    if (String(err.message).includes("FOREIGN KEY")) {
+      return res.status(409).json({
+        error: "Produk tidak bisa dihapus karena sudah punya riwayat transaksi. Set stoknya ke 0 sebagai gantinya.",
+      });
+    }
+    throw err;
+  }
 });
