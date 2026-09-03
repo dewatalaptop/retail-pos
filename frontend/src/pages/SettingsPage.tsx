@@ -7,9 +7,6 @@ interface FullSettings {
   storeAddress: string;
   storePhone: string;
   receiptFooter: string;
-  adsenseClientId: string;
-  adsenseSlotFooter: string;
-  adsenseSlotReports: string;
 }
 
 const EMPTY: FullSettings = {
@@ -17,9 +14,6 @@ const EMPTY: FullSettings = {
   storeAddress: "",
   storePhone: "",
   receiptFooter: "",
-  adsenseClientId: "",
-  adsenseSlotFooter: "",
-  adsenseSlotReports: "",
 };
 
 function Field({
@@ -42,7 +36,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-indigo-500"
       />
       {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
     </div>
@@ -85,7 +79,7 @@ export default function SettingsPage() {
   if (loading) return <p className="text-sm text-slate-400">Memuat...</p>;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="mx-auto flex max-w-2xl flex-col gap-4">
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="mb-1 font-semibold text-slate-800">Profil toko</h2>
         <p className="mb-4 text-sm text-slate-500">
@@ -108,43 +102,13 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-1 font-semibold text-slate-800">Google AdSense</h2>
-        <p className="mb-4 text-sm text-slate-500">
-          Isi Client ID dan ID slot dari akun AdSense-mu untuk menampilkan iklan di ruang yang
-          sudah disediakan (footer halaman dan halaman laporan). Kosongkan salah satu untuk
-          menyembunyikan slot itu — akan tetap terlihat sebagai placeholder di panel admin ini,
-          bukan iklan sungguhan, sampai diisi.
-        </p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Field
-              label="AdSense Client ID"
-              value={form.adsenseClientId}
-              onChange={(v) => set("adsenseClientId", v)}
-              placeholder="ca-pub-xxxxxxxxxxxxxxxx"
-            />
-          </div>
-          <Field
-            label="Slot ID — footer (semua halaman)"
-            value={form.adsenseSlotFooter}
-            onChange={(v) => set("adsenseSlotFooter", v)}
-          />
-          <Field
-            label="Slot ID — halaman laporan"
-            value={form.adsenseSlotReports}
-            onChange={(v) => set("adsenseSlotReports", v)}
-          />
-        </div>
-      </div>
-
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
-      <div className="flex items-center gap-3">
+      <div className="sticky bottom-0 -mx-4 flex items-center gap-3 border-t border-slate-200 bg-slate-100/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
         <button
           onClick={save}
           disabled={saving}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           {saving ? "Menyimpan..." : "Simpan pengaturan"}
         </button>

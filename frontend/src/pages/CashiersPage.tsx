@@ -182,7 +182,7 @@ export default function CashiersPage() {
           <button
             type="submit"
             disabled={creating}
-            className="w-fit rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit"
           >
             {creating ? "Menambahkan..." : "Tambah kasir"}
           </button>
@@ -198,7 +198,7 @@ export default function CashiersPage() {
         )}
         {cashiers.map((c) => (
           <div key={c.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-medium text-slate-800">
                   {c.name} <span className="font-normal text-slate-400">@{c.username}</span>
@@ -217,13 +217,13 @@ export default function CashiersPage() {
                     setEditingId(editingId === c.id ? null : c.id);
                     setResetPassword("");
                   }}
-                  className="text-xs text-indigo-600 hover:underline"
+                  className="rounded px-2 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 hover:underline"
                 >
                   Ganti password
                 </button>
                 <button
                   onClick={() => toggleActive(c)}
-                  className={`text-xs font-medium hover:underline ${c.active ? "text-rose-500" : "text-emerald-600"}`}
+                  className={`rounded px-2 py-1.5 text-xs font-medium hover:underline ${c.active ? "text-rose-500 hover:bg-rose-50" : "text-emerald-600 hover:bg-emerald-50"}`}
                 >
                   {c.active ? "Nonaktifkan" : "Aktifkan"}
                 </button>
@@ -231,18 +231,18 @@ export default function CashiersPage() {
             </div>
 
             {editingId === c.id && (
-              <div className="mb-3 flex gap-2">
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row">
                 <input
                   type="password"
                   value={resetPassword}
                   onChange={(e) => setResetPassword(e.target.value)}
                   placeholder="Password baru (min. 6 karakter)"
                   minLength={6}
-                  className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+                  className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
                 />
                 <button
                   onClick={() => submitResetPassword(c.id)}
-                  className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white"
+                  className="shrink-0 rounded-lg bg-indigo-600 px-3 py-2.5 text-xs font-medium text-white"
                 >
                   Simpan
                 </button>

@@ -16,6 +16,20 @@ function getSettings(storeId: number): StoreSettingsRow {
   return db.prepare("SELECT * FROM store_settings WHERE store_id = ?").get(storeId) as unknown as StoreSettingsRow;
 }
 
+// AdSense belongs to whoever operates this deployment (the platform owner),
+// not to individual store owners — it's this app's own monetization, not a
+// per-tenant customization. Set once via Cloud Functions env vars
+// (functions/.env — see README), applied identically to every store's ad
+// slots. Deliberately not stored in store_settings or exposed through the
+// PUT below: no store owner can see or change it from the app.
+function getPlatformAdsenseConfig() {
+  return {
+    adsenseClientId: process.env.ADSENSE_CLIENT_ID ?? "",
+    adsenseSlotFooter: process.env.ADSENSE_SLOT_FOOTER ?? "",
+    adsenseSlotReports: process.env.ADSENSE_SLOT_REPORTS ?? "",
+  };
+}
+
 // Open to any authenticated user of the store, not just the owner — a kasir
 // needs this too, since it's what drives the footer branding/ad slot they
 // see throughout the app (see frontend's SettingsContext). There's no more
@@ -28,9 +42,7 @@ settingsRouter.get("/", (req, res) => {
     storeAddress: s.store_address,
     storePhone: s.store_phone,
     receiptFooter: s.receipt_footer,
-    adsenseClientId: s.adsense_client_id,
-    adsenseSlotFooter: s.adsense_slot_footer,
-    adsenseSlotReports: s.adsense_slot_reports,
+    ...getPlatformAdsenseConfig(),
   });
 });
 
@@ -39,9 +51,6 @@ const settingsSchema = z.object({
   storeAddress: z.string().default(""),
   storePhone: z.string().default(""),
   receiptFooter: z.string().default(""),
-  adsenseClientId: z.string().default(""),
-  adsenseSlotFooter: z.string().default(""),
-  adsenseSlotReports: z.string().default(""),
 });
 
 settingsRouter.put(
@@ -55,18 +64,8 @@ settingsRouter.put(
     const s = parsed.data;
     db.prepare(
       `UPDATE store_settings SET store_name=?, store_address=?, store_phone=?, receipt_footer=?,
-       adsense_client_id=?, adsense_slot_footer=?, adsense_slot_reports=?,
        updated_at=datetime('now') WHERE store_id=?`
-    ).run(
-      s.storeName,
-      s.storeAddress,
-      s.storePhone,
-      s.receiptFooter,
-      s.adsenseClientId,
-      s.adsenseSlotFooter,
-      s.adsenseSlotReports,
-      req.user!.storeId
-    );
+    ).run(s.storeName, s.storeAddress, s.storePhone, s.receiptFooter, req.user!.storeId);
     await notifyDbChanged();
     res.json({ ok: true });
   })

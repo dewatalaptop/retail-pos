@@ -53,8 +53,18 @@ export default function ReportsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2 text-sm">
-        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border border-slate-300 px-2 py-1.5" />
-        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-slate-300 px-2 py-1.5" />
+        <input
+          type="date"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-2.5 sm:flex-none"
+        />
+        <input
+          type="date"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-2.5 sm:flex-none"
+        />
       </div>
 
       {lowStock.length > 0 && (
@@ -64,7 +74,7 @@ export default function ReportsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs uppercase text-slate-500">Total pendapatan</p>
           <p className="text-2xl font-bold text-slate-900">Rp{(summary?.revenue ?? 0).toLocaleString("id-ID")}</p>
@@ -86,13 +96,13 @@ export default function ReportsPage() {
           <div className="flex gap-1 text-xs">
             <button
               onClick={() => setPeriod("harian")}
-              className={`rounded px-2 py-1 font-medium ${period === "harian" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"}`}
+              className={`rounded px-2.5 py-1.5 font-medium ${period === "harian" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"}`}
             >
               Harian
             </button>
             <button
               onClick={() => setPeriod("bulanan")}
-              className={`rounded px-2 py-1 font-medium ${period === "bulanan" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"}`}
+              className={`rounded px-2.5 py-1.5 font-medium ${period === "bulanan" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"}`}
             >
               Bulanan
             </button>
@@ -101,14 +111,16 @@ export default function ReportsPage() {
         <div className="flex flex-col gap-1.5">
           {rows.map((r) => (
             <div key={r.label} className="flex items-center gap-2 text-xs">
-              <span className="w-24 shrink-0 text-slate-500">{r.label}</span>
+              <span className="w-14 shrink-0 truncate text-slate-500 sm:w-24">{r.label}</span>
               <div className="h-4 flex-1 rounded bg-slate-100">
                 <div
                   className="h-4 rounded bg-indigo-500"
                   style={{ width: `${(r.revenue / maxRevenue) * 100}%` }}
                 />
               </div>
-              <span className="w-24 shrink-0 text-right text-slate-600">Rp{r.revenue.toLocaleString("id-ID")}</span>
+              <span className="w-20 shrink-0 text-right text-slate-600 sm:w-24">
+                Rp{r.revenue.toLocaleString("id-ID")}
+              </span>
             </div>
           ))}
           {rows.length === 0 && <p className="text-sm text-slate-400">Belum ada data.</p>}
@@ -117,24 +129,26 @@ export default function ReportsPage() {
 
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-slate-700">Produk terlaris</h3>
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs uppercase text-slate-500">
-            <tr>
-              <th className="py-1">Produk</th>
-              <th className="py-1">Terjual</th>
-              <th className="py-1">Pendapatan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {summary?.topProducts.map((p) => (
-              <tr key={p.productId} className="border-t border-slate-100">
-                <td className="py-1.5">{p.name}</td>
-                <td className="py-1.5">{p.qtySold}</td>
-                <td className="py-1.5">Rp{p.revenue.toLocaleString("id-ID")}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[360px] text-sm">
+            <thead className="text-left text-xs uppercase text-slate-500">
+              <tr>
+                <th className="py-1">Produk</th>
+                <th className="py-1">Terjual</th>
+                <th className="py-1">Pendapatan</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {summary?.topProducts.map((p) => (
+                <tr key={p.productId} className="border-t border-slate-100">
+                  <td className="py-1.5">{p.name}</td>
+                  <td className="whitespace-nowrap py-1.5">{p.qtySold}</td>
+                  <td className="whitespace-nowrap py-1.5">Rp{p.revenue.toLocaleString("id-ID")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <AdSlot clientId={settings.adsenseClientId} slotId={settings.adsenseSlotReports} />

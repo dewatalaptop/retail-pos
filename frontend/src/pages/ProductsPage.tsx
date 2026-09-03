@@ -108,27 +108,27 @@ export default function ProductsPage() {
             placeholder="SKU"
             value={form.sku}
             onChange={(e) => setForm({ ...form, sku: e.target.value })}
-            className="rounded border border-slate-300 px-2 py-1.5"
+            className="rounded border border-slate-300 px-3 py-2.5"
             required
           />
           <input
             placeholder="Nama produk"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="rounded border border-slate-300 px-2 py-1.5"
+            className="rounded border border-slate-300 px-3 py-2.5"
             required
           />
           <input
             placeholder="Kategori"
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className="rounded border border-slate-300 px-2 py-1.5"
+            className="rounded border border-slate-300 px-3 py-2.5"
           />
           <textarea
             placeholder="Deskripsi singkat"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className="rounded border border-slate-300 px-2 py-1.5"
+            className="rounded border border-slate-300 px-3 py-2.5"
             rows={2}
           />
           <label className="text-xs text-slate-500">Harga</label>
@@ -136,30 +136,30 @@ export default function ProductsPage() {
             type="number"
             value={form.price}
             onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-            className="rounded border border-slate-300 px-2 py-1.5"
+            className="rounded border border-slate-300 px-3 py-2.5"
           />
           <label className="text-xs text-slate-500">Stok</label>
           <input
             type="number"
             value={form.stock}
             onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
-            className="rounded border border-slate-300 px-2 py-1.5"
+            className="rounded border border-slate-300 px-3 py-2.5"
           />
           <label className="text-xs text-slate-500">Batas stok rendah</label>
           <input
             type="number"
             value={form.lowStockThreshold}
             onChange={(e) => setForm({ ...form, lowStockThreshold: Number(e.target.value) })}
-            className="rounded border border-slate-300 px-2 py-1.5"
+            className="rounded border border-slate-300 px-3 py-2.5"
           />
         </div>
         {formError && <p className="mt-2 text-xs text-rose-600">{formError}</p>}
         <div className="mt-3 flex gap-2">
-          <button type="submit" className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white">
+          <button type="submit" className="flex-1 rounded-lg bg-indigo-600 px-3 py-2.5 text-sm font-medium text-white">
             {editingId ? "Simpan" : "Tambah"}
           </button>
           {editingId && (
-            <button type="button" onClick={resetForm} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <button type="button" onClick={resetForm} className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm">
               Batal
             </button>
           )}
@@ -170,7 +170,7 @@ export default function ProductsPage() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="mb-3 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-indigo-500"
+          className="mb-3 rounded-lg border border-slate-300 px-2 py-2.5 text-sm outline-none focus:border-indigo-500"
         >
           <option value="">Semua kategori</option>
           {categories.map((c) => (
@@ -182,45 +182,52 @@ export default function ProductsPage() {
         {listError && (
           <p className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-600">{listError}</p>
         )}
-        <table className="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm shadow-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-3 py-2">Produk</th>
-              <th className="px-3 py-2">Harga</th>
-              <th className="px-3 py-2">Stok</th>
-              <th className="px-3 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p) => (
-              <tr key={p.id} className="border-t border-slate-100">
-                <td className="px-3 py-2">
-                  <p className="font-medium text-slate-800">{p.name}</p>
-                  <p className="text-xs text-slate-400">
-                    {p.sku} · {p.category}
-                  </p>
-                </td>
-                <td className="px-3 py-2">Rp{p.price.toLocaleString("id-ID")}</td>
-                <td className={`px-3 py-2 ${p.lowStock ? "font-medium text-amber-600" : ""}`}>
-                  {p.stock} {p.lowStock && "⚠"}
-                </td>
-                <td className="px-3 py-2 text-right">
-                  <button onClick={() => startEdit(p)} className="mr-2 text-xs text-indigo-600 hover:underline">
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(p.id)}
-                    className={`text-xs hover:underline ${
-                      confirmingDeleteId === p.id ? "font-semibold text-rose-600" : "text-rose-500"
-                    }`}
-                  >
-                    {confirmingDeleteId === p.id ? "Yakin?" : "Hapus"}
-                  </button>
-                </td>
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="w-full min-w-[480px] text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-3 py-2">Produk</th>
+                <th className="px-3 py-2">Harga</th>
+                <th className="px-3 py-2">Stok</th>
+                <th className="px-3 py-2"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {products.map((p) => (
+                <tr key={p.id} className="border-t border-slate-100">
+                  <td className="px-3 py-2">
+                    <p className="font-medium text-slate-800">{p.name}</p>
+                    <p className="text-xs text-slate-400">
+                      {p.sku} · {p.category}
+                    </p>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2">Rp{p.price.toLocaleString("id-ID")}</td>
+                  <td className={`whitespace-nowrap px-3 py-2 ${p.lowStock ? "font-medium text-amber-600" : ""}`}>
+                    {p.stock} {p.lowStock && "⚠"}
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    <button
+                      onClick={() => startEdit(p)}
+                      className="rounded px-2 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(p.id)}
+                      className={`rounded px-2 py-1.5 text-xs hover:underline ${
+                        confirmingDeleteId === p.id
+                          ? "font-semibold text-rose-600"
+                          : "text-rose-500 hover:bg-rose-50"
+                      }`}
+                    >
+                      {confirmingDeleteId === p.id ? "Yakin?" : "Hapus"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

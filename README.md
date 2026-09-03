@@ -173,14 +173,17 @@ npx firebase-tools deploy --only hosting,functions
 
 ## Variabel lingkungan (backend, opsional)
 
-| Variabel     | Default                          | Keterangan                                   |
-|--------------|-----------------------------------|-----------------------------------------------|
-| `PORT`       | `4000`                            | Port HTTP backend.                            |
-| `DB_PATH`    | `backend/data.db`                 | Lokasi file SQLite.                           |
-| `JWT_SECRET` | nilai dev bawaan (lihat kode)      | **Wajib diganti** kalau dideploy sungguhan.   |
+| Variabel               | Default                     | Keterangan                                                    |
+|-------------------------|------------------------------|-----------------------------------------------------------------|
+| `PORT`                 | `4000`                      | Port HTTP backend.                                              |
+| `DB_PATH`              | `backend/data.db`           | Lokasi file SQLite.                                              |
+| `JWT_SECRET`           | nilai dev bawaan (lihat kode) | **Wajib diganti** kalau dideploy sungguhan.                    |
+| `ADSENSE_CLIENT_ID`    | kosong                      | Lihat [Mengaktifkan iklan](#mengaktifkan-iklan-adsense) — platform-wide, bukan per-toko. |
+| `ADSENSE_SLOT_FOOTER`  | kosong                      | Slot ID iklan footer.                                            |
+| `ADSENSE_SLOT_REPORTS` | kosong                      | Slot ID iklan halaman laporan.                                   |
 
-Untuk deploy Firebase, `JWT_SECRET` di-set lewat `functions/.env` (di-gitignore; salin dari
-`functions/.env.example` dan isi string acak sendiri) — dibaca otomatis oleh Cloud Functions saat
+Untuk deploy Firebase, semua ini di-set lewat `functions/.env` (di-gitignore; salin dari
+`functions/.env.example` dan isi nilainya sendiri) — dibaca otomatis oleh Cloud Functions saat
 cold start.
 
 ## Fitur
@@ -221,14 +224,15 @@ cold start.
    semua transaksi, lihat laporan, kelola produk, batalkan transaksi. Backend menegakkan semuanya
    lewat `requirePermission` (`backend/src/middleware/auth.ts`), bukan cuma disembunyikan di UI.
 10. **Pengaturan toko** (admin, halaman "Pengaturan") — nama/alamat/telepon toko dan catatan kaki
-    struk (dipakai di header aplikasi & struk cetak), plus konfigurasi Google AdSense (lihat di
-    bawah). Tersimpan di database per-toko, bukan file konfigurasi — jadi bisa diubah kapan saja
-    tanpa redeploy, dan tiap toko punya pengaturannya sendiri-sendiri.
-11. **Ruang iklan Google AdSense** (opsional) — dua slot siap pakai (footer semua halaman dan
-    halaman laporan) lewat komponen `frontend/src/components/AdSlot.tsx`. Kosong secara default
-    (tampil sebagai placeholder "Ruang iklan" yang jujur, bukan iklan palsu) sampai diisi Client ID
-    + Slot ID dari akun AdSense-mu sendiri di halaman Pengaturan — lihat
-    [Mengaktifkan iklan](#mengaktifkan-iklan-adsense).
+    struk (dipakai di header aplikasi & struk cetak). Tersimpan di database per-toko, bukan file
+    konfigurasi — jadi bisa diubah kapan saja tanpa redeploy, dan tiap toko punya pengaturannya
+    sendiri-sendiri.
+11. **Ruang iklan Google AdSense** (opsional, dikontrol operator platform — lihat
+    [Mengaktifkan iklan](#mengaktifkan-iklan-adsense)) — dua slot siap pakai (footer semua halaman
+    dan halaman laporan) lewat komponen `frontend/src/components/AdSlot.tsx`, sama untuk semua
+    toko. Kosong secara default (tampil sebagai placeholder "Ruang iklan" yang jujur, bukan iklan
+    palsu) sampai diisi lewat env var Cloud Functions — **bukan** sesuatu yang bisa diatur pemilik
+    toko dari halaman Pengaturan (itu monetisasi aplikasi ini sendiri, bukan kustomisasi per-toko).
 12. **Bantuan** (halaman "Bantuan", `frontend/src/pages/HelpPage.tsx`) — tutorial dalam-aplikasi
     yang mencakup semua fitur di atas, bagiannya menyesuaikan otomatis dengan role yang sedang
     login (bagian khusus admin disembunyikan dari kasir).
@@ -238,17 +242,21 @@ cold start.
 
 ## Mengaktifkan iklan AdSense
 
-Aplikasi ini menyediakan dua ruang iklan tapi tidak mendaftarkan situs ke AdSense untukmu — itu
-harus dilakukan sendiri lewat akun Google AdSense-mu (per toko — pengaturan AdSense tidak
-dibagikan antar-toko).
+AdSense di sini adalah monetisasi **aplikasi ini sendiri** (milik siapa pun yang men-deploy-nya —
+biasanya kamu, operator platform), bukan sesuatu yang tiap pemilik toko atur masing-masing. Karena
+itu, konfigurasinya sengaja **tidak ada di halaman Pengaturan** (yang dilihat pemilik toko) — cuma
+lewat env var backend (`backend/src/routes/settings.ts`'s `getPlatformAdsenseConfig`), sama untuk
+semua toko yang pakai aplikasi ini:
 
 1. Daftar/masuk ke [Google AdSense](https://www.google.com/adsense/) dan tambahkan domain tempat
    aplikasi ini dideploy sebagai situsmu, tunggu sampai disetujui.
 2. Buat unit iklan (mis. "Retail POS Footer", "Retail POS Laporan") dan catat Client ID
    (`ca-pub-...`) serta Slot ID masing-masing.
-3. Login sebagai admin di aplikasi ini → menu **Pengaturan** → isi Client ID dan Slot ID yang
-   sesuai untuk tiap ruang iklan → **Simpan pengaturan**. Iklan sungguhan akan mulai tampil begitu
-   AdSense selesai memverifikasi unit iklannya (bisa perlu beberapa jam).
+3. Set `ADSENSE_CLIENT_ID`, `ADSENSE_SLOT_FOOTER`, `ADSENSE_SLOT_REPORTS` — lokal lewat env var
+   biasa sebelum menjalankan backend, atau untuk deploy Firebase lewat `functions/.env` (lihat
+   [Variabel lingkungan](#variabel-lingkungan-backend-opsional), sama seperti `JWT_SECRET`) lalu
+   deploy ulang. Iklan sungguhan akan mulai tampil begitu AdSense selesai memverifikasi unit
+   iklannya (bisa perlu beberapa jam).
 
 ## Catatan
 

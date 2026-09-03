@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { useSettings } from "../context/SettingsContext";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
@@ -46,6 +46,7 @@ export default function CashierPage() {
   const [showHeldCarts, setShowHeldCarts] = useState(false);
   const [holdLabel, setHoldLabel] = useState("");
   const [holding, setHolding] = useState(false);
+  const cartPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadProducts();
@@ -245,38 +246,40 @@ export default function CashierPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 pb-20 lg:pb-0 lg:grid-cols-3">
       <div className="lg:col-span-2">
-        <div className="mb-3 flex gap-2">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Cari produk (nama atau SKU)... atau scan barcode"
-            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-indigo-500 sm:py-2"
           />
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="rounded-lg border border-slate-300 px-2 py-2 text-sm outline-none focus:border-indigo-500"
-          >
-            <option value="">Semua kategori</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() => setShowHeldCarts((v) => !v)}
-            className="relative shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:border-indigo-400"
-          >
-            Tertahan
-            {heldCarts.length > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
-                {heldCarts.length}
-              </span>
-            )}
-          </button>
+          <div className="flex gap-2">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-2.5 text-sm outline-none focus:border-indigo-500 sm:flex-none sm:py-2"
+            >
+              <option value="">Semua kategori</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => setShowHeldCarts((v) => !v)}
+              className="relative shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-medium text-slate-600 hover:border-indigo-400 sm:py-2"
+            >
+              Tertahan
+              {heldCarts.length > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+                  {heldCarts.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {scanNotice && (
@@ -296,16 +299,16 @@ export default function CashierPage() {
                       {h.items.length} item &middot; {new Date(h.createdAt).toLocaleString("id-ID")}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex shrink-0 gap-2">
                     <button
                       onClick={() => resumeHeldCart(h)}
-                      className="rounded bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-500"
+                      className="rounded px-3 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500"
                     >
                       Lanjutkan
                     </button>
                     <button
                       onClick={() => discardHeldCart(h.id)}
-                      className="rounded bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+                      className="rounded px-3 py-2 text-xs font-medium text-slate-500 bg-slate-100 hover:bg-rose-50 hover:text-rose-600"
                     >
                       Buang
                     </button>
@@ -336,14 +339,17 @@ export default function CashierPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div ref={cartPanelRef} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 font-semibold text-slate-800">Keranjang</h2>
         <div className="flex flex-col gap-3">
           {cart.map((l) => (
             <div key={l.product.id} className="border-b border-slate-100 pb-2">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-2">
                 <p className="text-sm font-medium text-slate-800">{l.product.name}</p>
-                <button onClick={() => removeLine(l.product.id)} className="text-xs text-rose-500">
+                <button
+                  onClick={() => removeLine(l.product.id)}
+                  className="shrink-0 rounded px-2 py-1 text-xs text-rose-500 hover:bg-rose-50"
+                >
                   Hapus
                 </button>
               </div>
@@ -355,7 +361,7 @@ export default function CashierPage() {
                   max={l.product.stock}
                   value={l.qty}
                   onChange={(e) => updateLine(l.product.id, { qty: Math.max(1, Number(e.target.value)) })}
-                  className="w-14 rounded border border-slate-300 px-1 py-0.5"
+                  className="w-16 rounded border border-slate-300 px-1.5 py-1.5"
                 />
                 <label>Diskon %</label>
                 <input
@@ -366,7 +372,7 @@ export default function CashierPage() {
                   onChange={(e) =>
                     updateLine(l.product.id, { discountPercent: Math.min(100, Math.max(0, Number(e.target.value))) })
                   }
-                  className="w-14 rounded border border-slate-300 px-1 py-0.5"
+                  className="w-16 rounded border border-slate-300 px-1.5 py-1.5"
                 />
               </div>
             </div>
@@ -428,7 +434,7 @@ export default function CashierPage() {
             <button
               key={m}
               onClick={() => setPaymentMethod(m)}
-              className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium capitalize ${
+              className={`flex-1 rounded-lg border px-2 py-2.5 text-xs font-medium capitalize ${
                 paymentMethod === m ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-300 text-slate-600"
               }`}
             >
@@ -462,6 +468,22 @@ export default function CashierPage() {
           {busy ? "Memproses..." : "Bayar"}
         </button>
       </div>
+
+      {/* Mobile only: the cart lives below the whole product grid, so without
+          this the only way to reach checkout while browsing is scrolling
+          past every product — this keeps it one tap away. */}
+      {cart.length > 0 && (
+        <button
+          onClick={() => cartPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          className="fixed inset-x-3 z-30 flex items-center justify-between rounded-xl bg-indigo-600 px-4 py-3 text-white shadow-lg lg:hidden"
+          style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+        >
+          <span className="text-sm font-medium">
+            {cart.reduce((n, l) => n + l.qty, 0)} item &middot; Rp{totals.total.toLocaleString("id-ID")}
+          </span>
+          <span className="text-sm font-semibold">Lihat Keranjang &rarr;</span>
+        </button>
+      )}
     </div>
   );
 }

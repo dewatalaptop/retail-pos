@@ -98,67 +98,82 @@ export default function HistoryPage() {
   return (
     <div>
       <div className="mb-3 flex gap-2 text-sm">
-        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border border-slate-300 px-2 py-1.5" />
-        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-slate-300 px-2 py-1.5" />
+        <input
+          type="date"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-2.5 sm:flex-none"
+        />
+        <input
+          type="date"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-2.5 sm:flex-none"
+        />
       </div>
       {voidError && <p className="mb-2 text-sm text-rose-600">{voidError}</p>}
-      <table className="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm shadow-sm">
-        <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-          <tr>
-            <th className="px-3 py-2">ID</th>
-            <th className="px-3 py-2">Tanggal</th>
-            <th className="px-3 py-2">Metode</th>
-            <th className="px-3 py-2">Status</th>
-            <th className="px-3 py-2">Total</th>
-            <th className="px-3 py-2"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {transactions.map((t) => (
-            <tr key={t.id} className={`border-t border-slate-100 ${t.status === "voided" ? "opacity-50" : ""}`}>
-              <td className="px-3 py-2">#{t.id}</td>
-              <td className="px-3 py-2">{new Date(t.created_at).toLocaleString("id-ID")}</td>
-              <td className="px-3 py-2 capitalize">{t.payment_method}</td>
-              <td className="px-3 py-2">
-                {t.status === "voided" ? (
-                  <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-600">
-                    Dibatalkan
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                    Selesai
-                  </span>
-                )}
-              </td>
-              <td className="px-3 py-2">Rp{t.total.toLocaleString("id-ID")}</td>
-              <td className="px-3 py-2 text-right">
-                <div className="flex justify-end gap-3">
-                  <button onClick={() => openReceipt(t.id)} className="text-xs text-indigo-600 hover:underline">
-                    Lihat struk
-                  </button>
-                  {canVoid && t.status !== "voided" && (
-                    <button
-                      onClick={() => voidTransaction(t.id)}
-                      className={`text-xs font-medium hover:underline ${
-                        confirmVoidId === t.id ? "text-rose-700" : "text-rose-500"
-                      }`}
-                    >
-                      {confirmVoidId === t.id ? "Yakin?" : "Batalkan"}
-                    </button>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-          {transactions.length === 0 && (
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+        <table className="w-full min-w-[640px] text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
             <tr>
-              <td colSpan={6} className="px-3 py-6 text-center text-slate-400">
-                Belum ada transaksi.
-              </td>
+              <th className="px-3 py-2">ID</th>
+              <th className="px-3 py-2">Tanggal</th>
+              <th className="px-3 py-2">Metode</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Total</th>
+              <th className="px-3 py-2"></th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {transactions.map((t) => (
+              <tr key={t.id} className={`border-t border-slate-100 ${t.status === "voided" ? "opacity-50" : ""}`}>
+                <td className="whitespace-nowrap px-3 py-2">#{t.id}</td>
+                <td className="whitespace-nowrap px-3 py-2">{new Date(t.created_at).toLocaleString("id-ID")}</td>
+                <td className="whitespace-nowrap px-3 py-2 capitalize">{t.payment_method}</td>
+                <td className="whitespace-nowrap px-3 py-2">
+                  {t.status === "voided" ? (
+                    <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-600">
+                      Dibatalkan
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                      Selesai
+                    </span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2">Rp{t.total.toLocaleString("id-ID")}</td>
+                <td className="px-2 py-2 text-right">
+                  <div className="flex justify-end gap-1">
+                    <button
+                      onClick={() => openReceipt(t.id)}
+                      className="whitespace-nowrap rounded px-2 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 hover:underline"
+                    >
+                      Lihat struk
+                    </button>
+                    {canVoid && t.status !== "voided" && (
+                      <button
+                        onClick={() => voidTransaction(t.id)}
+                        className={`whitespace-nowrap rounded px-2 py-1.5 text-xs font-medium hover:underline ${
+                          confirmVoidId === t.id ? "text-rose-700" : "text-rose-500 hover:bg-rose-50"
+                        }`}
+                      >
+                        {confirmVoidId === t.id ? "Yakin?" : "Batalkan"}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {transactions.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-3 py-6 text-center text-slate-400">
+                  Belum ada transaksi.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
