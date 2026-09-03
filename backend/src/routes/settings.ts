@@ -8,31 +8,21 @@ import { asyncHandler } from "../lib/asyncHandler";
 
 export const settingsRouter = Router();
 
-function getSettings(): StoreSettingsRow {
-  // The row is seeded on first boot (see db/seed.ts) and never deleted, so
-  // this should always resolve — the `!` documents that invariant rather
-  // than papering over a real "missing settings" case.
-  return db.prepare("SELECT * FROM store_settings WHERE id = 1").get() as unknown as StoreSettingsRow;
+settingsRouter.use(requireAuth);
+
+function getSettings(storeId: number): StoreSettingsRow {
+  // Created together with the store itself (see db/stores.ts's createStore),
+  // so this should always resolve for any storeId a valid JWT can carry.
+  return db.prepare("SELECT * FROM store_settings WHERE store_id = ?").get(storeId) as unknown as StoreSettingsRow;
 }
 
-// Deliberately unauthenticated: the login page (no token yet) needs the
-// store name + AdSense config to render its branding and ad slot, and an
-// AdSense client/slot id is meant to be public (it's embedded in page HTML
-// for every visitor anyway) — nothing here is sensitive.
-settingsRouter.get("/public", (_req, res) => {
-  const s = getSettings();
-  res.json({
-    storeName: s.store_name,
-    receiptFooter: s.receipt_footer,
-    adsenseClientId: s.adsense_client_id,
-    adsenseSlotFooter: s.adsense_slot_footer,
-    adsenseSlotLogin: s.adsense_slot_login,
-    adsenseSlotReports: s.adsense_slot_reports,
-  });
-});
-
-settingsRouter.get("/", requireAuth, requireRole("admin"), (_req, res) => {
-  const s = getSettings();
+// Open to any authenticated user of the store, not just the owner — a kasir
+// needs this too, since it's what drives the footer branding/ad slot they
+// see throughout the app (see frontend's SettingsContext). There's no more
+// unauthenticated "/public" variant: with multiple stores now, there's no
+// single store to show branding for before someone has actually logged in.
+settingsRouter.get("/", (req, res) => {
+  const s = getSettings(req.user!.storeId);
   res.json({
     storeName: s.store_name,
     storeAddress: s.store_address,
@@ -40,7 +30,6 @@ settingsRouter.get("/", requireAuth, requireRole("admin"), (_req, res) => {
     receiptFooter: s.receipt_footer,
     adsenseClientId: s.adsense_client_id,
     adsenseSlotFooter: s.adsense_slot_footer,
-    adsenseSlotLogin: s.adsense_slot_login,
     adsenseSlotReports: s.adsense_slot_reports,
   });
 });
@@ -52,13 +41,11 @@ const settingsSchema = z.object({
   receiptFooter: z.string().default(""),
   adsenseClientId: z.string().default(""),
   adsenseSlotFooter: z.string().default(""),
-  adsenseSlotLogin: z.string().default(""),
   adsenseSlotReports: z.string().default(""),
 });
 
 settingsRouter.put(
   "/",
-  requireAuth,
   requireRole("admin"),
   asyncHandler(async (req, res) => {
     const parsed = settingsSchema.safeParse(req.body);
@@ -68,8 +55,8 @@ settingsRouter.put(
     const s = parsed.data;
     db.prepare(
       `UPDATE store_settings SET store_name=?, store_address=?, store_phone=?, receipt_footer=?,
-       adsense_client_id=?, adsense_slot_footer=?, adsense_slot_login=?, adsense_slot_reports=?,
-       updated_at=datetime('now') WHERE id=1`
+       adsense_client_id=?, adsense_slot_footer=?, adsense_slot_reports=?,
+       updated_at=datetime('now') WHERE store_id=?`
     ).run(
       s.storeName,
       s.storeAddress,
@@ -77,8 +64,8 @@ settingsRouter.put(
       s.receiptFooter,
       s.adsenseClientId,
       s.adsenseSlotFooter,
-      s.adsenseSlotLogin,
-      s.adsenseSlotReports
+      s.adsenseSlotReports,
+      req.user!.storeId
     );
     await notifyDbChanged();
     res.json({ ok: true });

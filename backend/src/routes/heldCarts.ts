@@ -31,8 +31,8 @@ function serialize(row: HeldCartRow) {
 // transaction history.
 heldCartsRouter.get("/", (req, res) => {
   const rows = db
-    .prepare("SELECT * FROM held_carts WHERE user_id = ? ORDER BY created_at DESC")
-    .all(req.user!.userId) as unknown as HeldCartRow[];
+    .prepare("SELECT * FROM held_carts WHERE store_id = ? AND user_id = ? ORDER BY created_at DESC")
+    .all(req.user!.storeId, req.user!.userId) as unknown as HeldCartRow[];
   res.json({ heldCarts: rows.map(serialize) });
 });
 
@@ -45,8 +45,8 @@ heldCartsRouter.post(
     }
     const { label, items } = parsed.data;
     const result = db
-      .prepare("INSERT INTO held_carts (user_id, label, items_json) VALUES (?, ?, ?)")
-      .run(req.user!.userId, label, JSON.stringify(items));
+      .prepare("INSERT INTO held_carts (store_id, user_id, label, items_json) VALUES (?, ?, ?, ?)")
+      .run(req.user!.storeId, req.user!.userId, label, JSON.stringify(items));
     const created = db.prepare("SELECT * FROM held_carts WHERE id = ?").get(result.lastInsertRowid) as unknown as
       | HeldCartRow
       | undefined;
@@ -62,7 +62,7 @@ heldCartsRouter.delete(
       | HeldCartRow
       | undefined;
     if (!existing) return res.status(404).json({ error: "Transaksi tertahan tidak ditemukan" });
-    if (existing.user_id !== req.user!.userId) {
+    if (existing.store_id !== req.user!.storeId || existing.user_id !== req.user!.userId) {
       return res.status(403).json({ error: "Tidak punya akses ke transaksi tertahan ini" });
     }
     db.prepare("DELETE FROM held_carts WHERE id = ?").run(req.params.id);

@@ -22,6 +22,7 @@ interface TransactionItem {
 export default function HistoryPage() {
   const { user } = useAuth();
   const { settings } = useSettings();
+  const canVoid = user?.role === "admin" || user?.permissions.canVoidTransactions;
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -135,7 +136,7 @@ export default function HistoryPage() {
                   <button onClick={() => openReceipt(t.id)} className="text-xs text-indigo-600 hover:underline">
                     Lihat struk
                   </button>
-                  {user?.role === "admin" && t.status !== "voided" && (
+                  {canVoid && t.status !== "voided" && (
                     <button
                       onClick={() => voidTransaction(t.id)}
                       className={`text-xs font-medium hover:underline ${

@@ -9,7 +9,6 @@ interface FullSettings {
   receiptFooter: string;
   adsenseClientId: string;
   adsenseSlotFooter: string;
-  adsenseSlotLogin: string;
   adsenseSlotReports: string;
 }
 
@@ -20,7 +19,6 @@ const EMPTY: FullSettings = {
   receiptFooter: "",
   adsenseClientId: "",
   adsenseSlotFooter: "",
-  adsenseSlotLogin: "",
   adsenseSlotReports: "",
 };
 
@@ -114,9 +112,9 @@ export default function SettingsPage() {
         <h2 className="mb-1 font-semibold text-slate-800">Google AdSense</h2>
         <p className="mb-4 text-sm text-slate-500">
           Isi Client ID dan ID slot dari akun AdSense-mu untuk menampilkan iklan di ruang yang
-          sudah disediakan (footer halaman, halaman login, dan halaman laporan). Kosongkan salah
-          satu untuk menyembunyikan slot itu — akan tetap terlihat sebagai placeholder di panel
-          admin ini, bukan iklan sungguhan, sampai diisi.
+          sudah disediakan (footer halaman dan halaman laporan). Kosongkan salah satu untuk
+          menyembunyikan slot itu — akan tetap terlihat sebagai placeholder di panel admin ini,
+          bukan iklan sungguhan, sampai diisi.
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
@@ -131,11 +129,6 @@ export default function SettingsPage() {
             label="Slot ID — footer (semua halaman)"
             value={form.adsenseSlotFooter}
             onChange={(v) => set("adsenseSlotFooter", v)}
-          />
-          <Field
-            label="Slot ID — halaman login"
-            value={form.adsenseSlotLogin}
-            onChange={(v) => set("adsenseSlotLogin", v)}
           />
           <Field
             label="Slot ID — halaman laporan"

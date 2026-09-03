@@ -1,40 +1,37 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { api } from "../api/client";
 
-export interface PublicSettings {
+export interface StoreSettings {
   storeName: string;
   receiptFooter: string;
   adsenseClientId: string;
   adsenseSlotFooter: string;
-  adsenseSlotLogin: string;
   adsenseSlotReports: string;
 }
 
-const DEFAULT_SETTINGS: PublicSettings = {
+const DEFAULT_SETTINGS: StoreSettings = {
   storeName: "Retail POS",
   receiptFooter: "Terima kasih telah berbelanja!",
   adsenseClientId: "",
   adsenseSlotFooter: "",
-  adsenseSlotLogin: "",
   adsenseSlotReports: "",
 };
 
 interface SettingsContextValue {
-  settings: PublicSettings;
+  settings: StoreSettings;
   refresh: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
 
+// Mounted inside the authenticated part of the route tree (see App.tsx) —
+// with multiple stores now, there's no single store's branding to show on
+// the pre-login pages, so this always fetches as the signed-in user.
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<PublicSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
 
   function refresh() {
-    // Public and unauthenticated on purpose (see backend/src/routes/settings.ts)
-    // — the login page needs the store name and ad config before any token
-    // exists. If it fails (e.g. backend briefly unreachable), keep whatever
-    // defaults/previous values are already showing rather than blanking them.
-    api<PublicSettings>("/settings/public")
+    api<StoreSettings>("/settings")
       .then(setSettings)
       .catch(() => {});
   }

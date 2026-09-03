@@ -9,51 +9,62 @@ import ProductsPage from "./pages/ProductsPage";
 import HistoryPage from "./pages/HistoryPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
+import CashiersPage from "./pages/CashiersPage";
+import HelpPage from "./pages/HelpPage";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <SettingsProvider>
-        <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route
-              element={
-                <ProtectedRoute>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            element={
+              <ProtectedRoute>
+                <SettingsProvider>
                   <Layout />
+                </SettingsProvider>
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/" element={<CashierPage />} />
+            <Route path="/riwayat" element={<HistoryPage />} />
+            <Route path="/bantuan" element={<HelpPage />} />
+            <Route
+              path="/produk"
+              element={
+                <ProtectedRoute permission="canManageProducts">
+                  <ProductsPage />
                 </ProtectedRoute>
               }
-            >
-              <Route path="/" element={<CashierPage />} />
-              <Route path="/riwayat" element={<HistoryPage />} />
-              <Route
-                path="/produk"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <ProductsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/laporan"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <ReportsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/pengaturan"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <SettingsPage />
-                  </ProtectedRoute>
-                }
-              />
-            </Route>
-          </Routes>
-        </AuthProvider>
-      </SettingsProvider>
+            />
+            <Route
+              path="/laporan"
+              element={
+                <ProtectedRoute permission="canViewReports">
+                  <ReportsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pengaturan"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/kasir"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <CashiersPage />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

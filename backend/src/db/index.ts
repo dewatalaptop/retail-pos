@@ -34,10 +34,3 @@ function migrateAddColumnIfMissing(table: string, column: string, definition: st
 // indexes.sql for the full reasoning).
 const indexes = fs.readFileSync(path.join(__dirname, "indexes.sql"), "utf-8");
 db.exec(indexes);
-
-// store_settings is a single fixed row (id=1, see schema.sql's CHECK). Every
-// route that reads it assumes it exists, so guarantee that here — at module
-// load, for every consumer (dev server, seed script, Cloud Functions cold
-// start) — rather than relying on `seed()`, which isn't always called (the
-// plain `node dist/server.js` / `npm run dev:backend` path never calls it).
-db.exec("INSERT OR IGNORE INTO store_settings (id) VALUES (1)");
