@@ -77,7 +77,7 @@ export default function LoginPage() {
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-500)]"
           />
 
           <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
@@ -85,7 +85,7 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-500)]"
           />
 
           {error && <p className="mb-3 text-sm text-rose-600">{error}</p>}
@@ -93,7 +93,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+            className="w-full rounded-lg bg-[var(--brand-600)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-500)] disabled:opacity-50"
           >
             {busy ? "Masuk..." : "Masuk sebagai kasir"}
           </button>

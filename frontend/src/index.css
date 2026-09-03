@@ -6,6 +6,60 @@ body {
   @apply bg-slate-100 text-slate-900;
 }
 
+/* Store color theme — a store owner picks one in Pengaturan (persisted per
+   store, not per device) and it's applied by setting data-theme on <html>
+   (see SettingsContext). :root holds the "indigo" default so pre-login pages
+   (which never see a store's theme) still render correctly. Every component
+   that used to hardcode a Tailwind indigo-* class now reads these variables
+   instead, via arbitrary-value classes like bg-[var(--brand-600)]. */
+:root {
+  --brand-50: #eef2ff;
+  --brand-400: #818cf8;
+  --brand-500: #6366f1;
+  --brand-600: #4f46e5;
+  --brand-700: #4338ca;
+}
+
+[data-theme="emerald"] {
+  --brand-50: #ecfdf5;
+  --brand-400: #34d399;
+  --brand-500: #10b981;
+  --brand-600: #059669;
+  --brand-700: #047857;
+}
+
+[data-theme="amber"] {
+  --brand-50: #fffbeb;
+  --brand-400: #fbbf24;
+  --brand-500: #f59e0b;
+  --brand-600: #d97706;
+  --brand-700: #b45309;
+}
+
+[data-theme="rose"] {
+  --brand-50: #fff1f2;
+  --brand-400: #fb7185;
+  --brand-500: #f43f5e;
+  --brand-600: #e11d48;
+  --brand-700: #be123c;
+}
+
+[data-theme="sky"] {
+  --brand-50: #f0f9ff;
+  --brand-400: #38bdf8;
+  --brand-500: #0ea5e9;
+  --brand-600: #0284c7;
+  --brand-700: #0369a1;
+}
+
+[data-theme="slate"] {
+  --brand-50: #f8fafc;
+  --brand-400: #94a3b8;
+  --brand-500: #64748b;
+  --brand-600: #475569;
+  --brand-700: #334155;
+}
+
 /* Only the receipt (marked with #receipt) should render when printing. */
 @media print {
   body * {

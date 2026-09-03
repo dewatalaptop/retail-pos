@@ -85,6 +85,8 @@ CREATE TABLE IF NOT EXISTS store_settings (
   store_address TEXT NOT NULL DEFAULT '',
   store_phone TEXT NOT NULL DEFAULT '',
   receipt_footer TEXT NOT NULL DEFAULT 'Terima kasih telah berbelanja!',
+  theme TEXT NOT NULL DEFAULT 'indigo',
+  default_tax_rate_percent REAL NOT NULL DEFAULT 0,
   adsense_client_id TEXT NOT NULL DEFAULT '',
   adsense_slot_footer TEXT NOT NULL DEFAULT '',
   adsense_slot_reports TEXT NOT NULL DEFAULT '',

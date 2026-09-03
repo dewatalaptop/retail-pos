@@ -68,6 +68,8 @@ export interface StoreSettingsRow {
   store_address: string;
   store_phone: string;
   receipt_footer: string;
+  theme: string;
+  default_tax_rate_percent: number;
   adsense_client_id: string;
   adsense_slot_footer: string;
   adsense_slot_reports: string;

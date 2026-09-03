@@ -8,6 +8,11 @@ import { asyncHandler } from "../lib/asyncHandler";
 
 export const settingsRouter = Router();
 
+// Keep in sync with the palette names defined in frontend/src/lib/themes.ts —
+// this is the server-side allowlist so an invalid theme name can never be
+// persisted (the CSS override for it simply wouldn't exist).
+export const THEME_NAMES = ["indigo", "emerald", "amber", "rose", "sky", "slate"] as const;
+
 settingsRouter.use(requireAuth);
 
 function getSettings(storeId: number): StoreSettingsRow {
@@ -42,6 +47,8 @@ settingsRouter.get("/", (req, res) => {
     storeAddress: s.store_address,
     storePhone: s.store_phone,
     receiptFooter: s.receipt_footer,
+    theme: s.theme,
+    defaultTaxRatePercent: s.default_tax_rate_percent,
     ...getPlatformAdsenseConfig(),
   });
 });
@@ -51,6 +58,8 @@ const settingsSchema = z.object({
   storeAddress: z.string().default(""),
   storePhone: z.string().default(""),
   receiptFooter: z.string().default(""),
+  theme: z.enum(THEME_NAMES).default("indigo"),
+  defaultTaxRatePercent: z.number().min(0).max(100).default(0),
 });
 
 settingsRouter.put(
@@ -64,8 +73,8 @@ settingsRouter.put(
     const s = parsed.data;
     db.prepare(
       `UPDATE store_settings SET store_name=?, store_address=?, store_phone=?, receipt_footer=?,
-       updated_at=datetime('now') WHERE store_id=?`
-    ).run(s.storeName, s.storeAddress, s.storePhone, s.receiptFooter, req.user!.storeId);
+       theme=?, default_tax_rate_percent=?, updated_at=datetime('now') WHERE store_id=?`
+    ).run(s.storeName, s.storeAddress, s.storePhone, s.receiptFooter, s.theme, s.defaultTaxRatePercent, req.user!.storeId);
     await notifyDbChanged();
     res.json({ ok: true });
   })

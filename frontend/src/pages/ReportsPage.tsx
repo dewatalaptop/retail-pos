@@ -96,13 +96,13 @@ export default function ReportsPage() {
           <div className="flex gap-1 text-xs">
             <button
               onClick={() => setPeriod("harian")}
-              className={`rounded px-2.5 py-1.5 font-medium ${period === "harian" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"}`}
+              className={`rounded px-2.5 py-1.5 font-medium ${period === "harian" ? "bg-[var(--brand-600)] text-white" : "bg-slate-100 text-slate-600"}`}
             >
               Harian
             </button>
             <button
               onClick={() => setPeriod("bulanan")}
-              className={`rounded px-2.5 py-1.5 font-medium ${period === "bulanan" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"}`}
+              className={`rounded px-2.5 py-1.5 font-medium ${period === "bulanan" ? "bg-[var(--brand-600)] text-white" : "bg-slate-100 text-slate-600"}`}
             >
               Bulanan
             </button>
@@ -114,7 +114,7 @@ export default function ReportsPage() {
               <span className="w-14 shrink-0 truncate text-slate-500 sm:w-24">{r.label}</span>
               <div className="h-4 flex-1 rounded bg-slate-100">
                 <div
-                  className="h-4 rounded bg-indigo-500"
+                  className="h-4 rounded bg-[var(--brand-500)]"
                   style={{ width: `${(r.revenue / maxRevenue) * 100}%` }}
                 />
               </div>

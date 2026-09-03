@@ -21,6 +21,8 @@ db.exec(schema);
 migrateAddColumnIfMissing("transactions", "status", "TEXT NOT NULL DEFAULT 'completed'");
 migrateAddColumnIfMissing("transactions", "voided_at", "TEXT");
 migrateAddColumnIfMissing("transactions", "void_reason", "TEXT");
+migrateAddColumnIfMissing("store_settings", "theme", "TEXT NOT NULL DEFAULT 'indigo'");
+migrateAddColumnIfMissing("store_settings", "default_tax_rate_percent", "REAL NOT NULL DEFAULT 0");
 
 function migrateAddColumnIfMissing(table: string, column: string, definition: string): void {
   const existing = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];

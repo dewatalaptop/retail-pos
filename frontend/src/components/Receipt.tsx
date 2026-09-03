@@ -1,3 +1,5 @@
+import { useStoreLogo } from "../hooks/useStoreLogo";
+
 export interface ReceiptItem {
   name: string;
   qty: number;
@@ -27,18 +29,26 @@ export default function Receipt({
   onClose,
   closeLabel = "Transaksi baru",
   storeName = "Retail POS",
+  storeAddress = "",
+  storePhone = "",
   footerNote = "Terima kasih telah berbelanja!",
 }: {
   data: ReceiptData;
   onClose: () => void;
   closeLabel?: string;
   storeName?: string;
+  storeAddress?: string;
+  storePhone?: string;
   footerNote?: string;
 }) {
+  const { logoUrl } = useStoreLogo();
   return (
     <div className="mx-auto max-w-sm">
       <div id="receipt" className="rounded-lg border border-slate-200 bg-white p-5 font-mono text-sm shadow-sm">
+        {logoUrl && <img src={logoUrl} alt="" className="mx-auto mb-2 h-14 w-14 rounded object-contain" />}
         <p className="text-center font-bold">{storeName}</p>
+        {storeAddress && <p className="text-center text-xs text-slate-500">{storeAddress}</p>}
+        {storePhone && <p className="text-center text-xs text-slate-500">{storePhone}</p>}
         <p className="text-center text-xs text-slate-500">Struk Transaksi #{data.transactionId}</p>
         <p className="text-center text-xs text-slate-500">{new Date(data.createdAt).toLocaleString("id-ID")}</p>
         <hr className="my-2 border-dashed" />
@@ -96,7 +106,7 @@ export default function Receipt({
         </button>
         <button
           onClick={onClose}
-          className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+          className="flex-1 rounded-lg bg-[var(--brand-600)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--brand-500)]"
         >
           {closeLabel}
         </button>

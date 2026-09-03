@@ -2,22 +2,24 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
+import { useStoreLogo } from "../hooks/useStoreLogo";
 import LowStockNotification from "./LowStockNotification";
 import AdSlot from "./AdSlot";
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg px-3 py-2 text-sm font-medium ${
-    isActive ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-200"
+    isActive ? "bg-[var(--brand-600)] text-white" : "text-slate-600 hover:bg-slate-200"
   }`;
 
 const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
   `block rounded-lg px-3 py-3 text-base font-medium ${
-    isActive ? "bg-indigo-600 text-white" : "text-slate-700 hover:bg-slate-100"
+    isActive ? "bg-[var(--brand-600)] text-white" : "text-slate-700 hover:bg-slate-100"
   }`;
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const { settings } = useSettings();
+  const { logoUrl } = useStoreLogo();
   const isAdmin = user?.role === "admin";
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
@@ -42,7 +44,10 @@ export default function Layout() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex min-w-0 items-center gap-4">
-            <span className="truncate text-lg font-bold text-indigo-600">{settings.storeName}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              {logoUrl && <img src={logoUrl} alt="" className="h-8 w-8 shrink-0 rounded object-contain" />}
+              <span className="truncate text-lg font-bold text-[var(--brand-600)]">{settings.storeName}</span>
+            </span>
             <nav className="hidden flex-wrap gap-1 lg:flex">
               {navLinks.map((item) => (
                 <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>

@@ -27,8 +27,15 @@ interface HeldCart {
   createdAt: string;
 }
 
+// Common Indonesian cash note denominations — tapping one adds it to the
+// current "uang diterima" total, so a cashier can key in "customer paid with
+// a 50rb and a 5rb note" as two taps instead of doing the mental math and
+// typing the sum by hand. This is the single biggest speed win for a
+// tunai-heavy warung during a rush.
+const QUICK_CASH_DENOMINATIONS = [2000, 5000, 10000, 20000, 50000, 100000];
+
 export default function CashierPage() {
-  const { settings } = useSettings();
+  const { settings, loading: settingsLoading } = useSettings();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -41,12 +48,24 @@ export default function CashierPage() {
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [scanNotice, setScanNotice] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const [heldCarts, setHeldCarts] = useState<HeldCart[]>([]);
   const [showHeldCarts, setShowHeldCarts] = useState(false);
   const [holdLabel, setHoldLabel] = useState("");
   const [holding, setHolding] = useState(false);
   const cartPanelRef = useRef<HTMLDivElement>(null);
+
+  // Without this, tax rate silently starts at 0 on every fresh page load and
+  // a cashier has to remember to type it in on every single sale — easy to
+  // forget during a busy shift and get an under-taxed receipt. It only
+  // applies once settings have actually loaded (see SettingsContext's
+  // `loading` flag) so it doesn't clobber a mid-cart manual override with
+  // the brief 0 the context starts with before its fetch resolves.
+  useEffect(() => {
+    if (!settingsLoading) setTaxRatePercent(settings.defaultTaxRatePercent);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsLoading]);
 
   useEffect(() => {
     loadProducts();
@@ -87,6 +106,25 @@ export default function CashierPage() {
 
   function updateLine(productId: number, patch: Partial<CartLine>) {
     setCart((prev) => prev.map((l) => (l.product.id === productId ? { ...l, ...patch } : l)));
+  }
+
+  // Deliberately separate from updateLine: the qty stepper buttons need the
+  // +1/-1 applied against the LATEST qty, not the qty captured in the
+  // render's closure. A patch like { qty: l.qty + 1 } computed at click time
+  // and passed through updateLine looks fine for one tap, but a cashier
+  // machine-gun-tapping "+" to add "5x Es Teh" fires clicks faster than
+  // React re-renders — every one of those clicks reads the same stale l.qty
+  // from that render, so several taps in a row all compute the same result
+  // and silently collapse into a single increment. Reading prev inside the
+  // updater (matching addToCart's existing pattern above) fixes it.
+  function bumpQty(productId: number, delta: number) {
+    setCart((prev) =>
+      prev.map((l) =>
+        l.product.id === productId
+          ? { ...l, qty: Math.min(l.product.stock, Math.max(1, l.qty + delta)) }
+          : l
+      )
+    );
   }
 
   function removeLine(productId: number) {
@@ -175,6 +213,7 @@ export default function CashierPage() {
       });
       setCart([]);
       setCashReceived("");
+      setTaxRatePercent(settings.defaultTaxRatePercent);
       loadProducts();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Gagal menyimpan transaksi");
@@ -234,12 +273,28 @@ export default function CashierPage() {
     loadHeldCarts();
   }
 
+  function clearCart() {
+    if (!confirmClear) {
+      // First tap just arms the confirm state (self-disarms after a few
+      // seconds) so a stray second tap can't wipe a real cart by accident —
+      // same pattern already used for voiding a transaction in Riwayat.
+      setConfirmClear(true);
+      setTimeout(() => setConfirmClear(false), 4000);
+      return;
+    }
+    setConfirmClear(false);
+    setCart([]);
+    setCashReceived("");
+  }
+
   if (receipt) {
     return (
       <Receipt
         data={receipt}
         onClose={() => setReceipt(null)}
         storeName={settings.storeName}
+        storeAddress={settings.storeAddress}
+        storePhone={settings.storePhone}
         footerNote={settings.receiptFooter}
       />
     );
@@ -253,13 +308,13 @@ export default function CashierPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Cari produk (nama atau SKU)... atau scan barcode"
-            className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-indigo-500 sm:py-2"
+            className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-500)] sm:py-2"
           />
           <div className="flex gap-2">
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-2.5 text-sm outline-none focus:border-indigo-500 sm:flex-none sm:py-2"
+              className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-2.5 text-sm outline-none focus:border-[var(--brand-500)] sm:flex-none sm:py-2"
             >
               <option value="">Semua kategori</option>
               {categories.map((c) => (
@@ -270,7 +325,7 @@ export default function CashierPage() {
             </select>
             <button
               onClick={() => setShowHeldCarts((v) => !v)}
-              className="relative shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-medium text-slate-600 hover:border-indigo-400 sm:py-2"
+              className="relative shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-medium text-slate-600 hover:border-[var(--brand-400)] sm:py-2"
             >
               Tertahan
               {heldCarts.length > 0 && (
@@ -302,7 +357,7 @@ export default function CashierPage() {
                   <div className="flex shrink-0 gap-2">
                     <button
                       onClick={() => resumeHeldCart(h)}
-                      className="rounded px-3 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500"
+                      className="rounded px-3 py-2 text-xs font-medium text-white bg-[var(--brand-600)] hover:bg-[var(--brand-500)]"
                     >
                       Lanjutkan
                     </button>
@@ -325,11 +380,11 @@ export default function CashierPage() {
               key={p.id}
               onClick={() => addToCart(p)}
               disabled={p.stock <= 0}
-              className="rounded-lg border border-slate-200 bg-white p-3 text-left shadow-sm hover:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-slate-200 bg-white p-3 text-left shadow-sm hover:border-[var(--brand-400)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <p className="text-sm font-semibold text-slate-800">{p.name}</p>
               <p className="text-xs text-slate-500">{p.sku}</p>
-              <p className="mt-1 text-sm font-medium text-indigo-600">Rp{p.price.toLocaleString("id-ID")}</p>
+              <p className="mt-1 text-sm font-medium text-[var(--brand-600)]">Rp{p.price.toLocaleString("id-ID")}</p>
               <p className={`text-xs ${p.lowStock ? "text-amber-600" : "text-slate-400"}`}>
                 Stok: {p.stock} {p.lowStock && "(rendah)"}
               </p>
@@ -340,7 +395,19 @@ export default function CashierPage() {
       </div>
 
       <div ref={cartPanelRef} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 font-semibold text-slate-800">Keranjang</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-semibold text-slate-800">Keranjang</h2>
+          {cart.length > 0 && (
+            <button
+              onClick={clearCart}
+              className={`rounded px-2 py-1 text-xs font-medium hover:underline ${
+                confirmClear ? "text-rose-700" : "text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+              }`}
+            >
+              {confirmClear ? "Yakin kosongkan?" : "Kosongkan"}
+            </button>
+          )}
+        </div>
         <div className="flex flex-col gap-3">
           {cart.map((l) => (
             <div key={l.product.id} className="border-b border-slate-100 pb-2">
@@ -355,14 +422,36 @@ export default function CashierPage() {
               </div>
               <div className="mt-1 flex items-center gap-2 text-xs">
                 <label>Qty</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={l.product.stock}
-                  value={l.qty}
-                  onChange={(e) => updateLine(l.product.id, { qty: Math.max(1, Number(e.target.value)) })}
-                  className="w-16 rounded border border-slate-300 px-1.5 py-1.5"
-                />
+                {/* Steppers, not just a typed number — a warung/restaurant
+                    cashier bumping "3x Es Teh" one tap at a time is far
+                    faster and more reliable on a touchscreen than opening
+                    the keyboard for a number field. */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => bumpQty(l.product.id, -1)}
+                    className="flex h-7 w-7 items-center justify-center rounded border border-slate-300 text-sm font-semibold text-slate-600 hover:border-[var(--brand-400)]"
+                    aria-label="Kurangi qty"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={l.product.stock}
+                    value={l.qty}
+                    onChange={(e) => updateLine(l.product.id, { qty: Math.max(1, Number(e.target.value)) })}
+                    className="w-12 rounded border border-slate-300 px-1 py-1.5 text-center"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => bumpQty(l.product.id, 1)}
+                    className="flex h-7 w-7 items-center justify-center rounded border border-slate-300 text-sm font-semibold text-slate-600 hover:border-[var(--brand-400)]"
+                    aria-label="Tambah qty"
+                  >
+                    +
+                  </button>
+                </div>
                 <label>Diskon %</label>
                 <input
                   type="number"
@@ -391,7 +480,7 @@ export default function CashierPage() {
             <button
               onClick={holdCart}
               disabled={holding}
-              className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-indigo-400 disabled:opacity-50"
+              className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-[var(--brand-400)] disabled:opacity-50"
             >
               Tahan
             </button>
@@ -435,7 +524,7 @@ export default function CashierPage() {
               key={m}
               onClick={() => setPaymentMethod(m)}
               className={`flex-1 rounded-lg border px-2 py-2.5 text-xs font-medium capitalize ${
-                paymentMethod === m ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-300 text-slate-600"
+                paymentMethod === m ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]" : "border-slate-300 text-slate-600"
               }`}
             >
               {m}
@@ -446,13 +535,50 @@ export default function CashierPage() {
         {paymentMethod === "tunai" && (
           <div className="mt-3">
             <label className="mb-1 block text-xs font-medium text-slate-600">Uang diterima</label>
-            <input
-              type="number"
-              value={cashReceived}
-              onChange={(e) => setCashReceived(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-            <p className={`mt-1 text-sm ${changeDue < 0 ? "text-rose-500" : "text-emerald-600"}`}>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={cashReceived}
+                onChange={(e) => setCashReceived(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+              {cashReceived !== "" && (
+                <button
+                  type="button"
+                  onClick={() => setCashReceived("")}
+                  className="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-500 hover:bg-slate-50"
+                >
+                  Hapus
+                </button>
+              )}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCashReceived(String(totals.total))}
+                className="rounded-full border border-[var(--brand-500)] bg-[var(--brand-50)] px-2.5 py-1 text-xs font-medium text-[var(--brand-700)]"
+              >
+                Uang pas
+              </button>
+              {QUICK_CASH_DENOMINATIONS.map((amount) => (
+                <button
+                  type="button"
+                  key={amount}
+                  // Functional update, not `cashReceivedNum + amount` — a
+                  // cashier stacking several notes (50rb then 5rb then 2rb)
+                  // taps these in quick succession, faster than React
+                  // re-renders, so reading the render-time `cashReceivedNum`
+                  // would make rapid taps silently overwrite each other
+                  // instead of summing (same class of bug as the qty
+                  // stepper — see bumpQty above).
+                  onClick={() => setCashReceived((prev) => String((Number(prev) || 0) + amount))}
+                  className="rounded-full border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-[var(--brand-400)]"
+                >
+                  +{amount >= 1000 ? `${amount / 1000}rb` : amount}
+                </button>
+              ))}
+            </div>
+            <p className={`mt-2 text-sm ${changeDue < 0 ? "text-rose-500" : "text-emerald-600"}`}>
               Kembalian: Rp{Math.max(0, changeDue).toLocaleString("id-ID")}
             </p>
           </div>
@@ -463,7 +589,7 @@ export default function CashierPage() {
         <button
           onClick={submitSale}
           disabled={busy || cart.length === 0 || (paymentMethod === "tunai" && changeDue < 0)}
-          className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-4 w-full rounded-lg bg-[var(--brand-600)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-500)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "Memproses..." : "Bayar"}
         </button>
@@ -475,7 +601,7 @@ export default function CashierPage() {
       {cart.length > 0 && (
         <button
           onClick={() => cartPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          className="fixed inset-x-3 z-30 flex items-center justify-between rounded-xl bg-indigo-600 px-4 py-3 text-white shadow-lg lg:hidden"
+          className="fixed inset-x-3 z-30 flex items-center justify-between rounded-xl bg-[var(--brand-600)] px-4 py-3 text-white shadow-lg lg:hidden"
           style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
         >
           <span className="text-sm font-medium">

@@ -46,7 +46,13 @@ const SECTIONS: Section[] = [
           diberi label, mis. nomor meja). Lanjutkan kapan saja lewat tombol <em>Tertahan</em> di
           pojok kanan atas daftar produk.
         </p>
-        <p>Pilih metode pembayaran (Tunai/Kartu/QRIS). Untuk tunai, masukkan uang yang diterima — kembalian dihitung otomatis.</p>
+        <p>
+          Pilih metode pembayaran (Tunai/Kartu/QRIS). Untuk tunai, ketuk tombol pecahan uang (mis.
+          "+50rb", "+5rb") sesuai lembar uang yang diterima dari pelanggan — bisa ditekan beberapa
+          kali untuk menjumlahkan beberapa lembar, atau ketuk <em>Uang pas</em> kalau pas. Kembalian
+          dihitung otomatis. Tombol <em>Kosongkan</em> di atas keranjang membatalkan seluruh
+          transaksi yang sedang diketik (perlu diketuk dua kali untuk konfirmasi).
+        </p>
       </div>
     ),
   },
@@ -98,6 +104,20 @@ const SECTIONS: Section[] = [
     body: (
       <div className="space-y-2">
         <p>Di menu <strong>Pengaturan</strong>, atur nama, alamat, dan telepon toko (muncul di struk cetak), serta catatan kaki struk.</p>
+        <p>
+          <strong>Tarif pajak default</strong> otomatis terisi di setiap transaksi baru di halaman
+          Kasir, jadi kasir tidak perlu mengetiknya berulang-ulang setiap transaksi (masih bisa
+          diubah manual per transaksi kalau ada kasus khusus).
+        </p>
+        <p>
+          <strong>Tema warna</strong> mengubah warna aksen tombol & navigasi di seluruh aplikasi —
+          berlaku untuk semua kasir yang login ke tokomu.
+        </p>
+        <p>
+          <strong>Logo usaha</strong> tampil di menu & struk. Berbeda dari pengaturan lain, logo ini
+          disimpan langsung di perangkat/browser yang dipakai mengunggahnya, bukan di server — kalau
+          kasir memakai HP atau komputer lain, logo perlu diunggah ulang di perangkat itu.
+        </p>
         <p>
           Aplikasi ini gratis, dan ada beberapa ruang iklan Google AdSense yang bisa kamu
           aktifkan sendiri untuk membantu menutup biaya operasional — isi Client ID & Slot ID dari

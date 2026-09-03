@@ -198,8 +198,12 @@ cold start.
 3. **Transaksi penjualan** (kasir) — keranjang multi-item, pencarian produk cepat, **scan
    barcode** (SKU dipakai sebagai barcode — cukup fokus di halaman kasir lalu scan, alat scanner
    USB/Bluetooth terdeteksi otomatis lewat pola ketikan cepatnya, lihat
-   `frontend/src/hooks/useBarcodeScanner.ts`), diskon per item, pajak per nota, metode pembayaran
-   tunai/kartu/QRIS (simulasi), hitung kembalian otomatis untuk tunai, stok berkurang otomatis &
+   `frontend/src/hooks/useBarcodeScanner.ts`), stepper +/- untuk ubah qty per baris (lebih cepat
+   dari mengetik di layar sentuh), diskon per item, pajak per nota (terisi otomatis dari
+   [tarif pajak default](#pengaturan-toko), masih bisa diubah manual), metode pembayaran
+   tunai/kartu/QRIS (simulasi) dengan **tombol cepat pecahan uang tunai** (mis. "+50rb", "Uang
+   pas") supaya kasir tidak perlu mengetik nominal manual, hitung kembalian otomatis, tombol
+   "Kosongkan" (konfirmasi dua-klik) untuk membatalkan seluruh keranjang, stok berkurang otomatis &
    atomik saat transaksi disimpan.
 4. **Tahan transaksi** — kasir bisa menahan (park) keranjang yang sedang diisi dengan label bebas
    (mis. nomor meja), lalu melanjutkannya nanti dari tombol "Tertahan"; berguna kalau pelanggan
@@ -210,7 +214,9 @@ cold start.
    pendapatan/produk terlaris. Konfirmasi dua-klik di UI untuk mencegah klik tidak sengaja. Admin
    selalu bisa; kasir bisa kalau diberi izin "Batalkan transaksi".
 6. **Struk** — ditampilkan setelah transaksi selesai, layout print-friendly (tombol "Cetak"
-   memakai CSS khusus print), pakai nama toko & catatan kaki sesuai [Pengaturan](#pengaturan-toko).
+   memakai CSS khusus print), pakai nama toko, alamat, telepon, catatan kaki, dan
+   [logo usaha](#pengaturan-toko) (kalau sudah diunggah di perangkat itu) sesuai
+   [Pengaturan](#pengaturan-toko).
 7. **Riwayat & laporan** — riwayat transaksi dengan filter tanggal dan status (kasir hanya melihat
    transaksinya sendiri kecuali diberi izin "Lihat semua transaksi"), laporan penjualan harian &
    bulanan (grafik batang sederhana), produk terlaris, total pendapatan — laporan sendiri butuh
@@ -224,9 +230,16 @@ cold start.
    semua transaksi, lihat laporan, kelola produk, batalkan transaksi. Backend menegakkan semuanya
    lewat `requirePermission` (`backend/src/middleware/auth.ts`), bukan cuma disembunyikan di UI.
 10. **Pengaturan toko** (admin, halaman "Pengaturan") — nama/alamat/telepon toko dan catatan kaki
-    struk (dipakai di header aplikasi & struk cetak). Tersimpan di database per-toko, bukan file
-    konfigurasi — jadi bisa diubah kapan saja tanpa redeploy, dan tiap toko punya pengaturannya
-    sendiri-sendiri.
+    struk (dipakai di header aplikasi & struk cetak), **tarif pajak default** (otomatis mengisi
+    field pajak di setiap transaksi baru di halaman Kasir), dan **tema warna** (6 pilihan — warna
+    aksen tombol & navigasi berlaku untuk semua kasir toko itu). Semua tersimpan di database
+    per-toko, bukan file konfigurasi — jadi bisa diubah kapan saja tanpa redeploy, dan tiap toko
+    punya pengaturannya sendiri-sendiri.
+    **Logo usaha** ada di kartu terpisah di halaman yang sama, tapi sengaja **disimpan di
+    perangkat/browser itu sendiri** (localStorage, lewat `frontend/src/hooks/useStoreLogo.ts`),
+    bukan di database — supaya tidak membengkakkan file SQLite yang disinkronkan ke Firebase
+    Storage setiap kali ada tulisan (lihat [Deployment](#deployment-live-demo)). Konsekuensinya:
+    logo perlu diunggah ulang di tiap perangkat/browser yang dipakai login, ini bukan bug.
 11. **Ruang iklan Google AdSense** (opsional, dikontrol operator platform — lihat
     [Mengaktifkan iklan](#mengaktifkan-iklan-adsense)) — dua slot siap pakai (footer semua halaman
     dan halaman laporan) lewat komponen `frontend/src/components/AdSlot.tsx`, sama untuk semua

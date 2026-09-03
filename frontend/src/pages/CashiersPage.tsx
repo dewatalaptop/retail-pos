@@ -182,7 +182,7 @@ export default function CashiersPage() {
           <button
             type="submit"
             disabled={creating}
-            className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit"
+            className="w-full rounded-lg bg-[var(--brand-600)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-500)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit"
           >
             {creating ? "Menambahkan..." : "Tambah kasir"}
           </button>
@@ -217,7 +217,7 @@ export default function CashiersPage() {
                     setEditingId(editingId === c.id ? null : c.id);
                     setResetPassword("");
                   }}
-                  className="rounded px-2 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 hover:underline"
+                  className="rounded px-2 py-1.5 text-xs text-[var(--brand-600)] hover:bg-[var(--brand-50)] hover:underline"
                 >
                   Ganti password
                 </button>
@@ -242,7 +242,7 @@ export default function CashiersPage() {
                 />
                 <button
                   onClick={() => submitResetPassword(c.id)}
-                  className="shrink-0 rounded-lg bg-indigo-600 px-3 py-2.5 text-xs font-medium text-white"
+                  className="shrink-0 rounded-lg bg-[var(--brand-600)] px-3 py-2.5 text-xs font-medium text-white"
                 >
                   Simpan
                 </button>

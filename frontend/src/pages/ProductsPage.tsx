@@ -155,7 +155,7 @@ export default function ProductsPage() {
         </div>
         {formError && <p className="mt-2 text-xs text-rose-600">{formError}</p>}
         <div className="mt-3 flex gap-2">
-          <button type="submit" className="flex-1 rounded-lg bg-indigo-600 px-3 py-2.5 text-sm font-medium text-white">
+          <button type="submit" className="flex-1 rounded-lg bg-[var(--brand-600)] px-3 py-2.5 text-sm font-medium text-white">
             {editingId ? "Simpan" : "Tambah"}
           </button>
           {editingId && (
@@ -170,7 +170,7 @@ export default function ProductsPage() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="mb-3 rounded-lg border border-slate-300 px-2 py-2.5 text-sm outline-none focus:border-indigo-500"
+          className="mb-3 rounded-lg border border-slate-300 px-2 py-2.5 text-sm outline-none focus:border-[var(--brand-500)]"
         >
           <option value="">Semua kategori</option>
           {categories.map((c) => (
@@ -208,7 +208,7 @@ export default function ProductsPage() {
                   <td className="px-2 py-2 text-right">
                     <button
                       onClick={() => startEdit(p)}
-                      className="rounded px-2 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 hover:underline"
+                      className="rounded px-2 py-1.5 text-xs text-[var(--brand-600)] hover:bg-[var(--brand-50)] hover:underline"
                     >
                       Edit
                     </button>

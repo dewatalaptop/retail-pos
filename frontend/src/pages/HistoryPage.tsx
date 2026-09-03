@@ -90,6 +90,8 @@ export default function HistoryPage() {
         onClose={() => setReceipt(null)}
         closeLabel="Kembali ke riwayat"
         storeName={settings.storeName}
+        storeAddress={settings.storeAddress}
+        storePhone={settings.storePhone}
         footerNote={settings.receiptFooter}
       />
     );
@@ -146,7 +148,7 @@ export default function HistoryPage() {
                   <div className="flex justify-end gap-1">
                     <button
                       onClick={() => openReceipt(t.id)}
-                      className="whitespace-nowrap rounded px-2 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 hover:underline"
+                      className="whitespace-nowrap rounded px-2 py-1.5 text-xs text-[var(--brand-600)] hover:bg-[var(--brand-50)] hover:underline"
                     >
                       Lihat struk
                     </button>

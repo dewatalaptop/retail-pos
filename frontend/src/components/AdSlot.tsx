@@ -23,9 +23,11 @@ function loadAdsenseScript(clientId: string): void {
 /**
  * One Google AdSense placement. Renders a labeled placeholder box (same
  * footprint as a real ad, so layout doesn't jump once one is configured)
- * until an admin fills in `clientId`/`slotId` from the Pengaturan page —
- * an unconfigured slot is a deliberate, honest "not set up yet" state, not
- * a broken-looking blank space or a fake ad.
+ * until the platform operator sets ADSENSE_CLIENT_ID/ADSENSE_SLOT_* env vars
+ * (see backend/src/routes/settings.ts) — this is platform-level monetization,
+ * not a per-store setting, so the placeholder must never tell a store owner
+ * to go configure it themselves in Pengaturan (that field doesn't exist
+ * there anymore — see the theme's AdSense-removal history for why).
  */
 export default function AdSlot({
   clientId,
@@ -59,7 +61,7 @@ export default function AdSlot({
       <div
         className={`flex min-h-[90px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400 ${className}`}
       >
-        Ruang iklan (atur AdSense di menu Pengaturan)
+        Ruang iklan
       </div>
     );
   }
