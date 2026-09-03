@@ -31,6 +31,30 @@ export interface TransactionRow {
   payment_method: "tunai" | "kartu" | "qris";
   cash_received: number | null;
   change_due: number | null;
+  status: "completed" | "voided";
+  voided_at: string | null;
+  void_reason: string | null;
+}
+
+export interface HeldCartRow {
+  id: number;
+  user_id: number;
+  label: string;
+  items_json: string;
+  created_at: string;
+}
+
+export interface StoreSettingsRow {
+  id: number;
+  store_name: string;
+  store_address: string;
+  store_phone: string;
+  receipt_footer: string;
+  adsense_client_id: string;
+  adsense_slot_footer: string;
+  adsense_slot_login: string;
+  adsense_slot_reports: string;
+  updated_at: string;
 }
 
 export interface TransactionItemRow {

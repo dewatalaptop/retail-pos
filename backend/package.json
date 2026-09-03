@@ -6,7 +6,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && node -e \"require('fs').copyFileSync('src/db/schema.sql','dist/db/schema.sql')\"",
+    "build": "tsc && node -e \"require('fs').copyFileSync('src/db/schema.sql','dist/db/schema.sql');require('fs').copyFileSync('src/db/indexes.sql','dist/db/indexes.sql')\"",
     "start": "node dist/server.js",
     "seed": "tsx src/db/seed.ts",
     "test": "vitest run"

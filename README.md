@@ -1,11 +1,14 @@
 # Retail POS
 
-Aplikasi Point of Sale (POS) web untuk toko retail kecil-menengah (minimarket/kafe): manajemen
-produk & stok, transaksi kasir dengan diskon/pajak/pembayaran, struk print-friendly, riwayat &
-laporan penjualan, serta notifikasi stok rendah untuk admin.
+Aplikasi Point of Sale (POS) web gratis untuk toko retail kecil-menengah (minimarket/kafe):
+manajemen produk & stok, transaksi kasir dengan diskon/pajak/pembayaran/tahan-transaksi/scan
+barcode, pembatalan transaksi, struk print-friendly dengan branding toko sendiri, riwayat &
+laporan penjualan, notifikasi stok rendah untuk admin, dan ruang iklan Google AdSense opsional
+supaya operatornya bisa menutup biaya hosting.
 
 **Demo live**: https://retail-pos-demo.web.app (login: `admin`/`admin123` atau `kasir`/`kasir123`)
-— lihat [Deployment](#deployment-live-demo) untuk detail & catatannya.
+— lihat [Deployment](#deployment-live-demo) untuk detail & catatannya. Data di versi live ini
+**persisten** (lihat bagian Deployment) — coba-coba di sana aman, tidak akan hilang.
 
 ## Tech stack
 
@@ -14,10 +17,12 @@ laporan penjualan, serta notifikasi stok rendah untuk admin.
   cukup `npm install`), JWT (`jsonwebtoken`) + `bcryptjs` untuk autentikasi, `zod` untuk validasi.
 - **Frontend**: React 18 + Vite + TypeScript + Tailwind CSS.
 - **Testing**: Vitest, unit test untuk logic penting (perhitungan total/diskon/pajak, kembalian,
-  validasi & pengurangan stok) di `backend/tests/`.
+  validasi & pengurangan stok, hook sinkronisasi database) di `backend/tests/`.
 - **Penyimpanan data**: file SQLite lokal (`backend/data.db`), dibuat otomatis dari
-  `backend/src/db/schema.sql` saat backend pertama kali dijalankan. Tidak terhubung ke
-  infrastruktur eksternal apa pun — semua data ada di file lokal ini.
+  `backend/src/db/schema.sql` saat backend pertama kali dijalankan. Berjalan lokal, tidak
+  terhubung ke infrastruktur eksternal apa pun. Saat dideploy ke Cloud Functions (lihat
+  [Deployment](#deployment-live-demo)), file yang sama otomatis disinkronkan ke Firebase Storage
+  supaya tetap persisten walau instance-nya stateless.
 
 ## Prasyarat
 
@@ -103,10 +108,16 @@ dicoba tanpa setup lokal: **https://retail-pos-demo.web.app**
   `/api/**` ke function ini, jadi frontend tetap memanggil `/api/...` origin yang sama seperti di
   dev (tidak ada masalah CORS).
 - **Database**: karena Cloud Functions tidak punya disk permanen, `DB_PATH` diarahkan ke direktori
-  temp instance (`functions/src/index.ts`) dan data di-seed ulang otomatis di setiap cold start.
-  **Konsekuensi: data demo di versi live ini reset setiap kali instance-nya cold-start** (biasanya
-  setelah idle beberapa menit) — cocok untuk coba-coba/demo, tapi jangan dipakai untuk data yang
-  perlu awet. Untuk data yang persist, jalankan lokal (lihat bagian Setup di atas).
+  temp instance (`functions/src/index.ts`), TAPI setiap cold start sekarang me-restore file SQLite
+  itu dari Firebase Storage (bucket proyek `ai-app-builder-7bf8e`, prefix `retail-pos-db/`,
+  terisolasi dari data project lain di bucket yang sama) sebelum backend-nya jalan, dan setiap
+  tulis (produk, transaksi, pembatalan, transaksi tertahan, pengaturan toko) memicu upload ulang
+  file itu ke Storage (lihat `backend/src/db/persistenceHook.ts` + pemanggilnya di setiap route,
+  dan `functions/src/index.ts` untuk mekanisme download/upload-nya). **Jadi data live tidak lagi
+  hilang saat cold start** — instance pertama yang pernah jalan akan men-seed data demo awal lalu
+  langsung mem-persist-kannya; instance berikutnya melanjutkan dari situ. Kalau memang perlu
+  mereset ke kondisi awal, hapus object `retail-pos-db/data.db` di bucket itu secara manual (lewat
+  Firebase Console atau `gsutil`/Admin SDK) — cold start berikutnya akan men-seed ulang dari nol.
 - Project Firebase yang dipakai (`ai-app-builder-7bf8e`) sama dengan dashboard AI App Builder,
   tapi terisolasi lewat Hosting site & Cloud Functions codebase (`retailpos`) sendiri — tidak
   berbagi data/kode dengan project lain di situ.
@@ -136,19 +147,51 @@ cold start.
    frontend dan endpoint backend sama-sama menegakkan pembatasan ini).
 2. **Manajemen produk** (admin) — CRUD produk: SKU, nama, kategori, harga, stok, deskripsi, dan
    ambang batas stok rendah per produk.
-3. **Transaksi penjualan** (kasir) — keranjang multi-item, pencarian produk cepat, diskon per
-   item, pajak per nota, metode pembayaran tunai/kartu/QRIS (simulasi), hitung kembalian
-   otomatis untuk tunai, stok berkurang otomatis & atomik saat transaksi disimpan.
-4. **Struk** — ditampilkan setelah transaksi selesai, layout print-friendly (tombol "Cetak"
-   memakai CSS khusus print).
-5. **Riwayat & laporan** — riwayat transaksi dengan filter tanggal (kasir hanya melihat
+3. **Transaksi penjualan** (kasir) — keranjang multi-item, pencarian produk cepat, **scan
+   barcode** (SKU dipakai sebagai barcode — cukup fokus di halaman kasir lalu scan, alat scanner
+   USB/Bluetooth terdeteksi otomatis lewat pola ketikan cepatnya, lihat
+   `frontend/src/hooks/useBarcodeScanner.ts`), diskon per item, pajak per nota, metode pembayaran
+   tunai/kartu/QRIS (simulasi), hitung kembalian otomatis untuk tunai, stok berkurang otomatis &
+   atomik saat transaksi disimpan.
+4. **Tahan transaksi** — kasir bisa menahan (park) keranjang yang sedang diisi dengan label bebas
+   (mis. nomor meja), lalu melanjutkannya nanti dari tombol "Tertahan"; berguna kalau pelanggan
+   belum siap bayar atau kasir perlu melayani orang lain dulu.
+5. **Pembatalan transaksi (void)** (admin) — membatalkan transaksi yang sudah selesai
+   mengembalikan stoknya secara otomatis dan menandai transaksi itu `voided` (bukan dihapus, agar
+   jejak auditnya tetap ada); transaksi yang dibatalkan otomatis tidak dihitung di laporan
+   pendapatan/produk terlaris. Konfirmasi dua-klik di UI untuk mencegah klik tidak sengaja.
+6. **Struk** — ditampilkan setelah transaksi selesai, layout print-friendly (tombol "Cetak"
+   memakai CSS khusus print), pakai nama toko & catatan kaki sesuai [Pengaturan](#pengaturan-toko).
+7. **Riwayat & laporan** — riwayat transaksi dengan filter tanggal dan status (kasir hanya melihat
    transaksinya sendiri, admin melihat semua), laporan penjualan harian & bulanan (grafik batang
    sederhana), produk terlaris, total pendapatan.
-6. **Notifikasi stok rendah** — ikon lonceng di header untuk admin, menampilkan jumlah & daftar
+8. **Notifikasi stok rendah** — ikon lonceng di header untuk admin, menampilkan jumlah & daftar
    produk yang stoknya di bawah ambang batas (polling tiap 30 detik).
-7. **Kualitas kode** — struktur rapi (routes/lib/middleware terpisah), business logic penting
-   (perhitungan harga, diskon, pajak, kembalian, validasi & pengurangan stok) sebagai fungsi
-   murni dengan unit test.
+9. **Pengaturan toko** (admin, halaman "Pengaturan") — nama/alamat/telepon toko dan catatan kaki
+   struk (dipakai di header aplikasi & struk cetak), plus konfigurasi Google AdSense (lihat di
+   bawah). Tersimpan di database, bukan file konfigurasi — jadi bisa diubah kapan saja tanpa
+   redeploy.
+10. **Ruang iklan Google AdSense** (opsional) — tiga slot siap pakai (footer semua halaman,
+    halaman login, halaman laporan) lewat komponen `frontend/src/components/AdSlot.tsx`. Kosong
+    secara default (tampil sebagai placeholder "Ruang iklan" yang jujur, bukan iklan palsu) sampai
+    diisi Client ID + Slot ID dari akun AdSense-mu sendiri di halaman Pengaturan — lihat
+    [Mengaktifkan iklan](#mengaktifkan-iklan-adsense).
+11. **Kualitas kode** — struktur rapi (routes/lib/middleware terpisah), business logic penting
+    (perhitungan harga, diskon, pajak, kembalian, validasi & pengurangan stok) sebagai fungsi
+    murni dengan unit test.
+
+## Mengaktifkan iklan AdSense
+
+Aplikasi ini menyediakan tiga ruang iklan tapi tidak mendaftarkan situs ke AdSense untukmu — itu
+harus dilakukan sendiri lewat akun Google AdSense-mu:
+
+1. Daftar/masuk ke [Google AdSense](https://www.google.com/adsense/) dan tambahkan domain tempat
+   aplikasi ini dideploy sebagai situsmu, tunggu sampai disetujui.
+2. Buat unit iklan (mis. "Retail POS Footer", "Retail POS Login", "Retail POS Laporan") dan catat
+   Client ID (`ca-pub-...`) serta Slot ID masing-masing.
+3. Login sebagai admin di aplikasi ini → menu **Pengaturan** → isi Client ID dan Slot ID yang
+   sesuai untuk tiap ruang iklan → **Simpan pengaturan**. Iklan sungguhan akan mulai tampil begitu
+   AdSense selesai memverifikasi unit iklannya (bisa perlu beberapa jam).
 
 ## Catatan
 

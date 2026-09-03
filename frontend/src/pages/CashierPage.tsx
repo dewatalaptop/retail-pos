@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api/client";
+import { useSettings } from "../context/SettingsContext";
+import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import Receipt, { ReceiptData } from "../components/Receipt";
 
 interface Product {
@@ -18,7 +20,15 @@ interface CartLine {
   discountPercent: number;
 }
 
+interface HeldCart {
+  id: number;
+  label: string;
+  items: { productId: number; qty: number; discountPercent: number }[];
+  createdAt: string;
+}
+
 export default function CashierPage() {
+  const { settings } = useSettings();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -30,10 +40,17 @@ export default function CashierPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
+  const [scanNotice, setScanNotice] = useState("");
+
+  const [heldCarts, setHeldCarts] = useState<HeldCart[]>([]);
+  const [showHeldCarts, setShowHeldCarts] = useState(false);
+  const [holdLabel, setHoldLabel] = useState("");
+  const [holding, setHolding] = useState(false);
 
   useEffect(() => {
     loadProducts();
     api<{ categories: string[] }>("/products/categories").then((res) => setCategories(res.categories));
+    loadHeldCarts();
   }, []);
 
   async function loadProducts() {
@@ -49,6 +66,11 @@ export default function CashierPage() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, category]);
+
+  async function loadHeldCarts() {
+    const res = await api<{ heldCarts: HeldCart[] }>("/held-carts");
+    setHeldCarts(res.heldCarts);
+  }
 
   function addToCart(product: Product) {
     setCart((prev) => {
@@ -69,6 +91,38 @@ export default function CashierPage() {
   function removeLine(productId: number) {
     setCart((prev) => prev.filter((l) => l.product.id !== productId));
   }
+
+  // A scanner emulates a keyboard typing the barcode then Enter — SKU is
+  // used as the barcode here since this app has no separate barcode field.
+  useBarcodeScanner(async (code) => {
+    const localMatch = products.find((p) => p.sku.toLowerCase() === code.toLowerCase());
+    if (localMatch) {
+      addToCart(localMatch);
+      setScanNotice(`Ditambahkan: ${localMatch.name}`);
+      return;
+    }
+    // The visible product list may be narrowed by the current search/category
+    // filter, so a scan that doesn't match it locally still needs a real
+    // lookup before it's treated as "not found".
+    try {
+      const res = await api<{ products: Product[] }>(`/products?q=${encodeURIComponent(code)}`);
+      const match = res.products.find((p) => p.sku.toLowerCase() === code.toLowerCase());
+      if (match) {
+        addToCart(match);
+        setScanNotice(`Ditambahkan: ${match.name}`);
+      } else {
+        setScanNotice(`SKU tidak ditemukan: ${code}`);
+      }
+    } catch {
+      setScanNotice(`SKU tidak ditemukan: ${code}`);
+    }
+  });
+
+  useEffect(() => {
+    if (!scanNotice) return;
+    const t = setTimeout(() => setScanNotice(""), 3000);
+    return () => clearTimeout(t);
+  }, [scanNotice]);
 
   const totals = useMemo(() => {
     const subtotal = cart.reduce((sum, l) => sum + l.product.price * l.qty, 0);
@@ -128,8 +182,66 @@ export default function CashierPage() {
     }
   }
 
+  async function holdCart() {
+    if (cart.length === 0) return;
+    setHolding(true);
+    try {
+      await api("/held-carts", {
+        method: "POST",
+        body: JSON.stringify({
+          label: holdLabel,
+          items: cart.map((l) => ({ productId: l.product.id, qty: l.qty, discountPercent: l.discountPercent })),
+        }),
+      });
+      setCart([]);
+      setHoldLabel("");
+      loadHeldCarts();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Gagal menahan transaksi");
+    } finally {
+      setHolding(false);
+    }
+  }
+
+  async function resumeHeldCart(held: HeldCart) {
+    // Prices/stock may have changed since this cart was parked, and the
+    // currently-loaded `products` list may be filtered by search — always
+    // re-fetch the full catalog fresh so the resumed cart reflects reality.
+    const res = await api<{ products: Product[] }>("/products");
+    const byId = new Map(res.products.map((p) => [p.id, p]));
+    const lines: CartLine[] = [];
+    const missing: string[] = [];
+    for (const item of held.items) {
+      const product = byId.get(item.productId);
+      if (!product) {
+        missing.push(`#${item.productId}`);
+        continue;
+      }
+      lines.push({ product, qty: Math.min(item.qty, Math.max(product.stock, 0)), discountPercent: item.discountPercent });
+    }
+    setCart(lines);
+    setShowHeldCarts(false);
+    await api(`/held-carts/${held.id}`, { method: "DELETE" });
+    loadHeldCarts();
+    if (missing.length > 0) {
+      setError(`Beberapa produk di transaksi tertahan sudah tidak ada: ${missing.join(", ")}`);
+    }
+  }
+
+  async function discardHeldCart(id: number) {
+    await api(`/held-carts/${id}`, { method: "DELETE" });
+    loadHeldCarts();
+  }
+
   if (receipt) {
-    return <Receipt data={receipt} onClose={() => setReceipt(null)} />;
+    return (
+      <Receipt
+        data={receipt}
+        onClose={() => setReceipt(null)}
+        storeName={settings.storeName}
+        footerNote={settings.receiptFooter}
+      />
+    );
   }
 
   return (
@@ -139,7 +251,7 @@ export default function CashierPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cari produk (nama atau SKU)..."
+            placeholder="Cari produk (nama atau SKU)... atau scan barcode"
             className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
           />
           <select
@@ -154,7 +266,56 @@ export default function CashierPage() {
               </option>
             ))}
           </select>
+          <button
+            onClick={() => setShowHeldCarts((v) => !v)}
+            className="relative shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:border-indigo-400"
+          >
+            Tertahan
+            {heldCarts.length > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+                {heldCarts.length}
+              </span>
+            )}
+          </button>
         </div>
+
+        {scanNotice && (
+          <p className="mb-2 rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-white">{scanNotice}</p>
+        )}
+
+        {showHeldCarts && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase text-amber-700">Transaksi tertahan</p>
+            {heldCarts.length === 0 && <p className="text-sm text-amber-700/70">Tidak ada transaksi tertahan.</p>}
+            <div className="flex flex-col gap-2">
+              {heldCarts.map((h) => (
+                <div key={h.id} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 shadow-sm">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{h.label || `Tertahan #${h.id}`}</p>
+                    <p className="text-xs text-slate-400">
+                      {h.items.length} item &middot; {new Date(h.createdAt).toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => resumeHeldCart(h)}
+                      className="rounded bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-500"
+                    >
+                      Lanjutkan
+                    </button>
+                    <button
+                      onClick={() => discardHeldCart(h.id)}
+                      className="rounded bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+                    >
+                      Buang
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {products.map((p) => (
             <button
@@ -212,6 +373,24 @@ export default function CashierPage() {
           ))}
           {cart.length === 0 && <p className="text-sm text-slate-400">Keranjang kosong.</p>}
         </div>
+
+        {cart.length > 0 && (
+          <div className="mt-3 flex gap-2">
+            <input
+              value={holdLabel}
+              onChange={(e) => setHoldLabel(e.target.value)}
+              placeholder="Label (mis. Meja 3)"
+              className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+            />
+            <button
+              onClick={holdCart}
+              disabled={holding}
+              className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-indigo-400 disabled:opacity-50"
+            >
+              Tahan
+            </button>
+          </div>
+        )}
 
         <div className="mt-4 flex items-center gap-2 text-xs">
           <label>Pajak %</label>

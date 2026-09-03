@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { useSettings } from "../context/SettingsContext";
+import AdSlot from "../components/AdSlot";
 
 interface Summary {
   transactionCount: number;
   revenue: number;
+  voidedCount: number;
   byDay: { day: string; revenue: number; transactionCount: number }[];
   byMonth: { month: string; revenue: number; transactionCount: number }[];
   topProducts: { productId: number; name: string; qtySold: number; revenue: number }[];
@@ -17,6 +20,7 @@ interface LowStockProduct {
 }
 
 export default function ReportsPage() {
+  const { settings } = useSettings();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
   const [from, setFrom] = useState("");
@@ -68,6 +72,11 @@ export default function ReportsPage() {
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs uppercase text-slate-500">Jumlah transaksi</p>
           <p className="text-2xl font-bold text-slate-900">{summary?.transactionCount ?? 0}</p>
+          {(summary?.voidedCount ?? 0) > 0 && (
+            <p className="mt-1 text-xs text-slate-400">
+              +{summary?.voidedCount} dibatalkan (tidak dihitung di atas)
+            </p>
+          )}
         </div>
       </div>
 
@@ -127,6 +136,8 @@ export default function ReportsPage() {
           </tbody>
         </table>
       </div>
+
+      <AdSlot clientId={settings.adsenseClientId} slotId={settings.adsenseSlotReports} />
     </div>
   );
 }

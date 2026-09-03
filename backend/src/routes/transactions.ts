@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireRole } from "../middleware/auth";
 import { computeCartTotals, computeChange, computeLineTotal } from "../lib/pricing";
 import { aggregateQuantities, checkStockAvailability, deductStock } from "../lib/stock";
 import { ProductRow, TransactionItemRow, TransactionRow } from "../types";
+import { notifyDbChanged } from "../db/persistenceHook";
+import { asyncHandler } from "../lib/asyncHandler";
 
 export const transactionsRouter = Router();
 
@@ -25,7 +27,7 @@ const saleSchema = z.object({
   taxRatePercent: z.number().min(0).max(100).default(0),
 });
 
-transactionsRouter.post("/", (req, res) => {
+transactionsRouter.post("/", asyncHandler(async (req, res) => {
   const parsed = saleSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Data tidak valid" });
@@ -118,12 +120,13 @@ transactionsRouter.post("/", (req, res) => {
     }
 
     db.exec("COMMIT");
+    await notifyDbChanged();
     res.status(201).json({ transactionId, ...totals, changeDue });
   } catch (err: any) {
     db.exec("ROLLBACK");
     res.status(err.status ?? 500).json({ error: err.message ?? "Gagal menyimpan transaksi" });
   }
-});
+}));
 
 transactionsRouter.get("/", (req, res) => {
   const from = String(req.query.from ?? "");
@@ -166,3 +169,51 @@ transactionsRouter.get("/:id", (req, res) => {
 
   res.json({ transaction, items });
 });
+
+const voidSchema = z.object({ reason: z.string().default("") });
+
+// Admin-only: cancels a completed sale and restores the stock it deducted.
+// Voiding never deletes the row — it stays visible in history/reports with a
+// 'voided' status so the audit trail is honest, it's just excluded from
+// revenue totals (see reports.ts).
+transactionsRouter.post(
+  "/:id/void",
+  requireRole("admin"),
+  asyncHandler(async (req, res) => {
+    const parsed = voidSchema.safeParse(req.body ?? {});
+    const reason = parsed.success ? parsed.data.reason : "";
+
+    const transaction = db.prepare("SELECT * FROM transactions WHERE id = ?").get(req.params.id) as unknown as
+      | TransactionRow
+      | undefined;
+    if (!transaction) return res.status(404).json({ error: "Transaksi tidak ditemukan" });
+    if (transaction.status === "voided") {
+      return res.status(409).json({ error: "Transaksi ini sudah dibatalkan sebelumnya" });
+    }
+
+    const items = db
+      .prepare("SELECT * FROM transaction_items WHERE transaction_id = ?")
+      .all(req.params.id) as unknown as TransactionItemRow[];
+
+    db.exec("BEGIN");
+    try {
+      for (const item of items) {
+        db.prepare("UPDATE products SET stock = stock + ?, updated_at = datetime('now') WHERE id = ?").run(
+          item.qty,
+          item.product_id
+        );
+      }
+      db.prepare(
+        "UPDATE transactions SET status = 'voided', voided_at = datetime('now'), void_reason = ? WHERE id = ?"
+      ).run(reason, req.params.id);
+      db.exec("COMMIT");
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
+    }
+
+    await notifyDbChanged();
+    const updated = db.prepare("SELECT * FROM transactions WHERE id = ?").get(req.params.id);
+    res.json({ transaction: updated });
+  })
+);

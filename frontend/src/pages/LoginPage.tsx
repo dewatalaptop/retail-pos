@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useSettings } from "../context/SettingsContext";
+import AdSlot from "../components/AdSlot";
 
 export default function LoginPage() {
   const { user, login } = useAuth();
+  const { settings } = useSettings();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,9 +28,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-100 px-4 py-8">
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-xl bg-white p-8 shadow">
-        <h1 className="mb-1 text-xl font-bold text-slate-900">Retail POS</h1>
+        <h1 className="mb-1 text-xl font-bold text-slate-900">{settings.storeName}</h1>
         <p className="mb-6 text-sm text-slate-500">Masuk untuk melanjutkan</p>
 
         <label className="mb-1 block text-sm font-medium text-slate-700">Username</label>
@@ -60,6 +63,9 @@ export default function LoginPage() {
           Demo: admin/admin123 (admin) atau kasir/kasir123 (kasir)
         </p>
       </form>
+      <div className="w-full max-w-sm">
+        <AdSlot clientId={settings.adsenseClientId} slotId={settings.adsenseSlotLogin} />
+      </div>
     </div>
   );
 }

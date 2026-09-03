@@ -37,6 +37,9 @@ export function seed(): void {
   } else {
     console.log("Products already exist, skipping product seed.");
   }
+
+  // The store_settings row itself is guaranteed by db/index.ts on every
+  // import (not just here), since it's assumed present by settings.ts.
 }
 
 if (require.main === module) {

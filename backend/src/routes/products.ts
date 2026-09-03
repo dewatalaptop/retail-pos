@@ -4,6 +4,8 @@ import { db } from "../db";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { ProductRow } from "../types";
 import { isLowStock } from "../lib/stock";
+import { notifyDbChanged } from "../db/persistenceHook";
+import { asyncHandler } from "../lib/asyncHandler";
 
 export const productsRouter = Router();
 
@@ -54,30 +56,35 @@ const productSchema = z.object({
   lowStockThreshold: z.number().int().nonnegative().default(5),
 });
 
-productsRouter.post("/", requireRole("admin"), (req, res) => {
-  const parsed = productSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Data tidak valid" });
-  }
-  const p = parsed.data;
-  try {
-    const result = db
-      .prepare(
-        `INSERT INTO products (sku, name, category, description, price, stock, low_stock_threshold)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(p.sku, p.name, p.category, p.description, p.price, p.stock, p.lowStockThreshold);
-    const created = db.prepare("SELECT * FROM products WHERE id = ?").get(result.lastInsertRowid);
-    res.status(201).json({ product: created });
-  } catch (err: any) {
-    if (String(err.message).includes("UNIQUE")) {
-      return res.status(409).json({ error: "SKU sudah dipakai" });
+productsRouter.post(
+  "/",
+  requireRole("admin"),
+  asyncHandler(async (req, res) => {
+    const parsed = productSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Data tidak valid" });
     }
-    throw err;
-  }
-});
+    const p = parsed.data;
+    try {
+      const result = db
+        .prepare(
+          `INSERT INTO products (sku, name, category, description, price, stock, low_stock_threshold)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
+        )
+        .run(p.sku, p.name, p.category, p.description, p.price, p.stock, p.lowStockThreshold);
+      const created = db.prepare("SELECT * FROM products WHERE id = ?").get(result.lastInsertRowid);
+      await notifyDbChanged();
+      res.status(201).json({ product: created });
+    } catch (err: any) {
+      if (String(err.message).includes("UNIQUE")) {
+        return res.status(409).json({ error: "SKU sudah dipakai" });
+      }
+      throw err;
+    }
+  })
+);
 
-productsRouter.put("/:id", requireRole("admin"), (req, res) => {
+productsRouter.put("/:id", requireRole("admin"), asyncHandler(async (req, res) => {
   const parsed = productSchema.partial().safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Data tidak valid" });
@@ -112,19 +119,25 @@ productsRouter.put("/:id", requireRole("admin"), (req, res) => {
   );
 
   const updated = db.prepare("SELECT * FROM products WHERE id = ?").get(req.params.id);
+  await notifyDbChanged();
   res.json({ product: updated });
-});
+}));
 
-productsRouter.delete("/:id", requireRole("admin"), (req, res) => {
-  try {
-    db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
-    res.status(204).end();
-  } catch (err: any) {
-    if (String(err.message).includes("FOREIGN KEY")) {
-      return res.status(409).json({
-        error: "Produk tidak bisa dihapus karena sudah punya riwayat transaksi. Set stoknya ke 0 sebagai gantinya.",
-      });
+productsRouter.delete(
+  "/:id",
+  requireRole("admin"),
+  asyncHandler(async (req, res) => {
+    try {
+      db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
+      await notifyDbChanged();
+      res.status(204).end();
+    } catch (err: any) {
+      if (String(err.message).includes("FOREIGN KEY")) {
+        return res.status(409).json({
+          error: "Produk tidak bisa dihapus karena sudah punya riwayat transaksi. Set stoknya ke 0 sebagai gantinya.",
+        });
+      }
+      throw err;
     }
-    throw err;
-  }
-});
+  })
+);

@@ -30,7 +30,10 @@ CREATE TABLE IF NOT EXISTS transactions (
   total REAL NOT NULL,
   payment_method TEXT NOT NULL CHECK (payment_method IN ('tunai', 'kartu', 'qris')),
   cash_received REAL,
-  change_due REAL
+  change_due REAL,
+  status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('completed', 'voided')),
+  voided_at TEXT,
+  void_reason TEXT
 );
 
 CREATE TABLE IF NOT EXISTS transaction_items (
@@ -44,7 +47,24 @@ CREATE TABLE IF NOT EXISTS transaction_items (
   line_total REAL NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id);
-CREATE INDEX IF NOT EXISTS idx_transactions_created ON transactions(created_at);
-CREATE INDEX IF NOT EXISTS idx_transaction_items_tx ON transaction_items(transaction_id);
-CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+CREATE TABLE IF NOT EXISTS held_carts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  label TEXT NOT NULL DEFAULT '',
+  items_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS store_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  store_name TEXT NOT NULL DEFAULT 'Retail POS',
+  store_address TEXT NOT NULL DEFAULT '',
+  store_phone TEXT NOT NULL DEFAULT '',
+  receipt_footer TEXT NOT NULL DEFAULT 'Terima kasih telah berbelanja!',
+  adsense_client_id TEXT NOT NULL DEFAULT '',
+  adsense_slot_footer TEXT NOT NULL DEFAULT '',
+  adsense_slot_login TEXT NOT NULL DEFAULT '',
+  adsense_slot_reports TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+

@@ -26,15 +26,19 @@ export default function Receipt({
   data,
   onClose,
   closeLabel = "Transaksi baru",
+  storeName = "Retail POS",
+  footerNote = "Terima kasih telah berbelanja!",
 }: {
   data: ReceiptData;
   onClose: () => void;
   closeLabel?: string;
+  storeName?: string;
+  footerNote?: string;
 }) {
   return (
     <div className="mx-auto max-w-sm">
       <div id="receipt" className="rounded-lg border border-slate-200 bg-white p-5 font-mono text-sm shadow-sm">
-        <p className="text-center font-bold">RETAIL POS</p>
+        <p className="text-center font-bold">{storeName}</p>
         <p className="text-center text-xs text-slate-500">Struk Transaksi #{data.transactionId}</p>
         <p className="text-center text-xs text-slate-500">{new Date(data.createdAt).toLocaleString("id-ID")}</p>
         <hr className="my-2 border-dashed" />
@@ -80,7 +84,7 @@ export default function Receipt({
             <span>{rp(data.changeDue)}</span>
           </div>
         )}
-        <p className="mt-3 text-center text-xs text-slate-400">Terima kasih!</p>
+        <p className="mt-3 text-center text-xs text-slate-400">{footerNote}</p>
       </div>
 
       <div className="mt-4 flex gap-2 print:hidden">
