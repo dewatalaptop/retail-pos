@@ -13,4 +13,16 @@ ext {
     androidxJunitVersion = '1.3.0'
     androidxEspressoCoreVersion = '3.7.0'
     cordovaAndroidVersion = '14.0.1'
+    // @capacitor-firebase/authentication gates its own native per-provider SDK
+    // dependencies (play-services-auth, credentials-play-services-auth, etc.)
+    // behind these — without them the actual Google Sign-In native library
+    // isn't compiled into the app at all, regardless of the providers: [...]
+    // JS config or useCredentialManager option, which only control what the
+    // JS bridge *calls*, not what's *available* to call. Missing this was the
+    // real root cause behind several confusing, generic-looking real-device
+    // errors ("provider not enabled", "[16] Account reauth failed",
+    // "10:" / DEVELOPER_ERROR) — see plugin docs:
+    // https://github.com/capawesome-team/capacitor-firebase/blob/main/packages/authentication/docs/setup-google.md
+    rgcfaIncludeGoogle = true
+    androidxCredentialsVersion = '1.3.0'
 }
