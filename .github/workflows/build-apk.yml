@@ -35,6 +35,22 @@ jobs:
 
       - run: npm run build
 
+      # versionCode/versionName were hardcoded (1 / "1.0") and never changed
+      # between builds. That's invisible on the surface but breaks the one
+      # thing that matters when chasing a real-device bug fix-by-fix: with an
+      # identical version, a sideloaded reinstall and a stale cached download
+      # are BOTH indistinguishable from "the new APK, actually installed" —
+      # confirmed as the likely explanation after a fix that was independently
+      # verified correct (SHA-1 match, native libs present, correct OAuth
+      # client resource) still reproduced the identical error on retest.
+      # Tying versionCode to the run number makes every build a genuine,
+      # installer-visible update, and lets Settings > App info prove whether
+      # a reinstall actually took effect.
+      - name: Stamp app version from the build number
+        run: |
+          sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName \"1.0\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+
       # capacitor.config.json points at the app's own live URL (server.url) —
       # this app is a thin native shell around the already-deployed web app,
       # not a rebuilt offline copy, so this just re-syncs config/plugins.
