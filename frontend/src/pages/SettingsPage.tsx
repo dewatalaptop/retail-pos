@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { useSettings } from "../context/SettingsContext";
+import { usePrinter } from "../context/PrinterContext";
 import { useStoreLogo } from "../hooks/useStoreLogo";
 import { THEMES } from "../lib/themes";
+import { PAPER_WIDTHS, type PaperWidthKey } from "../lib/escpos";
 
 interface FullSettings {
   storeName: string;
@@ -116,6 +118,151 @@ function LogoCard() {
   );
 }
 
+const STATUS_META: Record<string, { label: string; dot: string }> = {
+  disconnected: { label: "Belum terhubung", dot: "bg-slate-300" },
+  scanning: { label: "Mencari printer...", dot: "bg-amber-400 animate-pulse" },
+  connecting: { label: "Menghubungkan...", dot: "bg-amber-400 animate-pulse" },
+  connected: { label: "Terhubung", dot: "bg-emerald-500" },
+  printing: { label: "Mencetak...", dot: "bg-emerald-500 animate-pulse" },
+  error: { label: "Gagal", dot: "bg-rose-500" },
+};
+
+function PrinterCard() {
+  const printer = usePrinter();
+  const [testError, setTestError] = useState("");
+  const [testBusy, setTestBusy] = useState(false);
+  const meta = STATUS_META[printer.status];
+
+  async function handleTestPrint() {
+    setTestBusy(true);
+    setTestError("");
+    try {
+      await printer.printReceipt(
+        {
+          transactionId: 0,
+          items: [{ name: "Contoh Produk", qty: 1, price: 15000, discountPercent: 0 }],
+          subtotal: 15000,
+          discountTotal: 0,
+          taxTotal: 0,
+          total: 15000,
+          paymentMethod: "tunai",
+          cashReceived: 15000,
+          changeDue: 0,
+          createdAt: new Date().toISOString(),
+        },
+        { storeName: "Tes Cetak", footerNote: "Kalau struk ini tercetak rapi, printer sudah siap dipakai." }
+      );
+    } catch (err) {
+      setTestError(err instanceof Error ? err.message : "Gagal mencetak");
+    } finally {
+      setTestBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 className="mb-1 font-semibold text-slate-800">Printer struk (Bluetooth)</h2>
+      <p className="mb-4 text-sm text-slate-500">
+        Sambungkan printer thermal Bluetooth untuk mencetak struk langsung, tanpa lewat dialog cetak
+        browser. Koneksi ini tersimpan di perangkat ini saja — kalau kasir memakai HP/tablet lain,
+        printer perlu dihubungkan ulang di perangkat itu.
+        {!printer.isNative && " Fitur ini paling stabil dipakai lewat aplikasi Android, bukan browser."}
+      </p>
+
+      <div className="mb-4 flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 rounded-full ${meta.dot}`} />
+        <span className="text-sm font-medium text-slate-700">
+          {meta.label}
+          {printer.connectedName && printer.status === "connected" ? ` — ${printer.connectedName}` : ""}
+        </span>
+      </div>
+
+      {printer.error && <p className="mb-3 text-sm text-rose-600">{printer.error}</p>}
+
+      {printer.status === "connected" || printer.status === "printing" ? (
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Ukuran kertas</label>
+            <div className="flex gap-2">
+              {(Object.keys(PAPER_WIDTHS) as PaperWidthKey[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => printer.setPaperWidth(key)}
+                  className={`rounded-lg border px-3 py-2 text-sm font-medium ${
+                    printer.paperWidth === key ? "border-slate-800 bg-slate-50" : "border-slate-200 text-slate-600"
+                  }`}
+                >
+                  {PAPER_WIDTHS[key].label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={printer.autoPrint}
+              onChange={(e) => printer.setAutoPrint(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300"
+            />
+            Cetak otomatis setiap transaksi selesai
+          </label>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleTestPrint}
+              disabled={testBusy || printer.status === "printing"}
+              className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+            >
+              {testBusy ? "Mencetak..." : "Tes cetak"}
+            </button>
+            <button
+              type="button"
+              onClick={() => printer.disconnect()}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-rose-500 hover:bg-rose-50"
+            >
+              Putuskan printer
+            </button>
+          </div>
+          {testError && <p className="text-sm text-rose-600">{testError}</p>}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => (printer.status === "scanning" ? printer.stopScan() : printer.scan())}
+            className="w-fit rounded-lg bg-[var(--brand-600)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--brand-500)]"
+          >
+            {printer.status === "scanning" ? "Hentikan pencarian" : "Cari printer"}
+          </button>
+
+          {printer.status === "scanning" && printer.devices.length === 0 && (
+            <p className="text-sm text-slate-400">Menyalakan printer dan mengaktifkan mode pairing membantu ditemukan lebih cepat...</p>
+          )}
+
+          {printer.devices.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {printer.devices.map((d) => (
+                <button
+                  key={d.deviceId}
+                  type="button"
+                  onClick={() => printer.connect(d)}
+                  className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm hover:border-[var(--brand-400)]"
+                >
+                  <span className="font-medium text-slate-700">{d.name}</span>
+                  <span className="text-xs text-[var(--brand-600)]">Hubungkan</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { refresh } = useSettings();
   const [form, setForm] = useState<FullSettings>(EMPTY);
@@ -217,6 +364,8 @@ export default function SettingsPage() {
       </div>
 
       <LogoCard />
+
+      <PrinterCard />
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
 

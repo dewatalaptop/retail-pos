@@ -296,6 +296,7 @@ export default function CashierPage() {
         storeAddress={settings.storeAddress}
         storePhone={settings.storePhone}
         footerNote={settings.receiptFooter}
+        autoPrintEligible
       />
     );
   }

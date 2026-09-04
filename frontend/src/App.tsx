@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { SettingsProvider } from "./context/SettingsContext";
+import { PrinterProvider } from "./context/PrinterContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
@@ -22,7 +23,9 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <SettingsProvider>
-                  <Layout />
+                  <PrinterProvider>
+                    <Layout />
+                  </PrinterProvider>
                 </SettingsProvider>
               </ProtectedRoute>
             }

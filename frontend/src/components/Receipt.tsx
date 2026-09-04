@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from "react";
 import { useStoreLogo } from "../hooks/useStoreLogo";
+import { usePrinter } from "../context/PrinterContext";
 
 export interface ReceiptItem {
   name: string;
@@ -32,6 +34,7 @@ export default function Receipt({
   storeAddress = "",
   storePhone = "",
   footerNote = "Terima kasih telah berbelanja!",
+  autoPrintEligible = false,
 }: {
   data: ReceiptData;
   onClose: () => void;
@@ -40,8 +43,38 @@ export default function Receipt({
   storeAddress?: string;
   storePhone?: string;
   footerNote?: string;
+  // Only a receipt from a transaction the cashier just completed should
+  // auto-print — reopening an old one from Riwayat shouldn't fire the
+  // printer again just because "cetak otomatis" is on.
+  autoPrintEligible?: boolean;
 }) {
   const { logoUrl } = useStoreLogo();
+  const printer = usePrinter();
+  const [btError, setBtError] = useState("");
+  const [btBusy, setBtBusy] = useState(false);
+  const autoPrinted = useRef(false);
+
+  async function printViaBluetooth() {
+    setBtBusy(true);
+    setBtError("");
+    try {
+      await printer.printReceipt(data, { storeName, storeAddress, storePhone, footerNote });
+    } catch (err) {
+      setBtError(err instanceof Error ? err.message : "Gagal mencetak");
+    } finally {
+      setBtBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!autoPrintEligible || autoPrinted.current) return;
+    if (printer.autoPrint && printer.status === "connected") {
+      autoPrinted.current = true;
+      printViaBluetooth();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPrintEligible, printer.autoPrint, printer.status]);
+
   return (
     <div className="mx-auto max-w-sm">
       <div id="receipt" className="rounded-lg border border-slate-200 bg-white p-5 font-mono text-sm shadow-sm">
@@ -97,13 +130,24 @@ export default function Receipt({
         <p className="mt-3 text-center text-xs text-slate-400">{footerNote}</p>
       </div>
 
-      <div className="mt-4 flex gap-2 print:hidden">
+      {btError && <p className="mt-2 text-center text-xs text-rose-600 print:hidden">{btError}</p>}
+
+      <div className="mt-4 flex flex-wrap gap-2 print:hidden">
         <button
           onClick={() => window.print()}
           className="flex-1 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
         >
           Cetak
         </button>
+        {printer.status === "connected" || printer.status === "printing" ? (
+          <button
+            onClick={printViaBluetooth}
+            disabled={btBusy || printer.status === "printing"}
+            className="flex-1 rounded-lg border border-slate-800 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+          >
+            {btBusy || printer.status === "printing" ? "Mencetak..." : "Cetak Bluetooth"}
+          </button>
+        ) : null}
         <button
           onClick={onClose}
           className="flex-1 rounded-lg bg-[var(--brand-600)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--brand-500)]"
