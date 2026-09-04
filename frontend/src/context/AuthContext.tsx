@@ -36,6 +36,22 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 // app's own session from here on is the same JWT bearer-token scheme used
 // everywhere else (see /auth/google in the backend) — so nothing downstream
 // needs to know Google (or which platform's sign-in flow) was involved.
+// Best-effort diagnostic ping so a Google sign-in failure on someone else's
+// device (who has no way to relay a console error back) still shows up
+// somewhere Claude Code can actually see it — the Cloud Functions logs for
+// this backend's own /auth/log-client-error route. Never let this call
+// itself surface an error to the user or block the real error handling.
+function reportGoogleSignInError(err: any): void {
+  api("/auth/log-client-error", {
+    method: "POST",
+    body: JSON.stringify({
+      platform: Capacitor.getPlatform(),
+      code: err?.code,
+      message: err?.message,
+    }),
+  }).catch(() => {});
+}
+
 async function exchangeForAppSession(idToken: string): Promise<AuthUser> {
   const res = await api<{ token: string; user: AuthUser }>("/auth/google", {
     method: "POST",
@@ -68,7 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
         } catch (err: any) {
-          setGoogleError(err?.message ?? "Gagal masuk dengan Google. Coba lagi.");
+          console.error("Google redirect sign-in failed:", err);
+          reportGoogleSignInError(err);
+          setGoogleError(
+            `Gagal masuk dengan Google: ${err?.message ?? err?.code ?? "kesalahan tidak diketahui"}. Coba lagi.`
+          );
         }
       }
 
@@ -105,11 +125,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Android's own Google Sign-In UI entirely outside the WebView, then
       // completes native Firebase auth — getIdToken() after that returns a
       // real Firebase ID token, not the raw Google credential.
-      await FirebaseAuthentication.signInWithGoogle();
-      const { token: idToken } = await FirebaseAuthentication.getIdToken();
-      const loggedInUser = await exchangeForAppSession(idToken);
-      setUser(loggedInUser);
-      await FirebaseAuthentication.signOut().catch(() => {});
+      try {
+        await FirebaseAuthentication.signInWithGoogle();
+        const { token: idToken } = await FirebaseAuthentication.getIdToken();
+        const loggedInUser = await exchangeForAppSession(idToken);
+        setUser(loggedInUser);
+        await FirebaseAuthentication.signOut().catch(() => {});
+      } catch (err) {
+        reportGoogleSignInError(err);
+        throw err;
+      }
       return;
     }
 

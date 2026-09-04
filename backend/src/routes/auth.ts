@@ -81,3 +81,25 @@ authRouter.post(
 authRouter.get("/me", requireAuth, (req, res) => {
   res.json({ user: req.user });
 });
+
+const clientErrorSchema = z.object({
+  platform: z.string().default("unknown"),
+  code: z.string().optional(),
+  message: z.string().optional(),
+});
+
+// Fire-and-forget diagnostic sink for client-side Google sign-in failures
+// (see AuthContext.tsx / LoginPage.tsx) — the native Android plugin and the
+// web redirect flow can both fail for reasons with no way for the person
+// hitting them to relay back (they're not going to open devtools or adb
+// logcat), so the client posts whatever it caught here instead. No auth
+// (there's no session yet — sign-in just failed) and console.error only, so
+// it shows up in this function's Cloud Functions logs — not stored anywhere
+// persistent, purely a temporary debugging aid.
+authRouter.post("/log-client-error", (req, res) => {
+  const parsed = clientErrorSchema.safeParse(req.body);
+  if (parsed.success) {
+    console.error("[google-signin-client-error]", JSON.stringify(parsed.data));
+  }
+  res.status(204).end();
+});

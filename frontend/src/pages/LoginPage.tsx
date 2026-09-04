@@ -36,6 +36,12 @@ export default function LoginPage() {
       // throws normally, so the catch below still does real work there.
       await loginWithGoogle();
     } catch (err: any) {
+      // Always log the full error — the UI text below is deliberately terse
+      // (raw native/Firebase error strings aren't good app copy), but a
+      // swallowed error with no trace anywhere makes a real failure
+      // impossible to diagnose remotely. Check the browser/WebView console
+      // for this if Google sign-in fails.
+      console.error("Google sign-in failed:", err);
       // A user-cancelled sign-in isn't an error worth showing as app copy —
       // covers both the native Android dialog's dismissal and any lingering
       // web popup-style cancellation code.
@@ -43,7 +49,7 @@ export default function LoginPage() {
       if (err?.code === "auth/popup-closed-by-user" || /cancel/i.test(message)) {
         setError("");
       } else {
-        setError("Gagal masuk dengan Google. Coba lagi.");
+        setError(`Gagal masuk dengan Google: ${message || err?.code || "kesalahan tidak diketahui"}. Coba lagi.`);
       }
     } finally {
       setGoogleBusy(false);
