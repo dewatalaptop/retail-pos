@@ -23,10 +23,13 @@ jobs:
         with:
           node-version: 22
 
+      # Capacitor 8's Android Gradle Plugin requires JDK 21 (confirmed via a
+      # real CI failure with 17: "invalid source release: 21") — bump this
+      # if a future Capacitor major version changes the requirement again.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       - run: npm ci
 
