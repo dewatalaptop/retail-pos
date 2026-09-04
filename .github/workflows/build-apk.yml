@@ -1,0 +1,54 @@
+name: Build Android APK
+
+# Manual trigger only — an unrelated commit to the web app shouldn't burn
+# CI minutes rebuilding the Android wrapper every time. Fire it from the
+# AI App Builder dashboard's "Generate Android" button, or manually via
+# Actions > Build Android APK > Run workflow.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write # needed to publish the APK to a GitHub Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - run: npm ci
+
+      - run: npm run build
+
+      # capacitor.config.json points at the app's own live URL (server.url) —
+      # this app is a thin native shell around the already-deployed web app,
+      # not a rebuilt offline copy, so this just re-syncs config/plugins.
+      - run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: frontend/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      # Debug-signed (Android's default debug keystore, baked into the
+      # Android SDK) — installable/sideloadable immediately with no keystore
+      # secret to manage, which is all "download and try the APK" needs.
+      - name: Publish APK to a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Android build (run ${{ github.run_number }})
+          body: Debug-signed APK, auto-published by the Build Android APK workflow. Not for Play Store distribution.
+          files: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+          make_latest: true

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Retail POS</string>
+    <string name="title_activity_main">Retail POS</string>
+    <string name="package_name">com.aiappbuilder.retailpos</string>
+    <string name="custom_url_scheme">com.aiappbuilder.retailpos</string>
+</resources>

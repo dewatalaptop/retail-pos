@@ -1,0 +1,9 @@
+{
+  "appId": "com.aiappbuilder.retailpos",
+  "appName": "Retail POS",
+  "webDir": "dist",
+  "server": {
+    "url": "https://retail-pos-demo.web.app",
+    "cleartext": false
+  }
+}
