@@ -96,6 +96,21 @@ jobs:
           chmod +x ./gradlew
           ./gradlew assembleDebug --no-daemon
 
+      # keytool's earlier printout is the SHA-1 of the *keystore file*, not
+      # proof of what actually ended up signing this specific APK — a real
+      # mismatch there (wrong signingConfig picked up, stale keystore cache
+      # on the runner, etc.) would be invisible until now. apksigner reads
+      # the APK's actual v2/v3 signing block (what jarsigner/keytool -jarfile
+      # can't parse) — this is the authoritative source, verified 2026-09-04
+      # after a fix that checked out correct everywhere else still failed on
+      # a real device with the same DEVELOPER_ERROR(10).
+      - name: Verify the actual signing certificate baked into this APK
+        working-directory: frontend/android
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME" -name apksigner -type f | sort -V | tail -1)
+          echo "Using apksigner: $APKSIGNER"
+          "$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk
+
       # Debug-signed (Android's default debug keystore, baked into the
       # Android SDK) — installable/sideloadable immediately with no keystore
       # secret to manage, which is all "download and try the APK" needs.
