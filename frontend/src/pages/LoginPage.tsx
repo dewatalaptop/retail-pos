@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
-  const { user, googleError, login, loginWithGoogle } = useAuth();
+  const { user, login, loginWithGoogle } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -29,11 +29,6 @@ export default function LoginPage() {
     setGoogleBusy(true);
     setError("");
     try {
-      // On web this navigates the whole page away to Google and doesn't
-      // meaningfully "return" here — success/failure surfaces afterward via
-      // googleError below, once the app reloads and picks up the redirect
-      // result. On Android (native sign-in, no navigation) this resolves or
-      // throws normally, so the catch below still does real work there.
       await loginWithGoogle();
     } catch (err: any) {
       // Always log the full error — the UI text below is deliberately terse
@@ -75,7 +70,6 @@ export default function LoginPage() {
           </svg>
           {googleBusy ? "Membuka..." : "Masuk dengan Google (Pemilik Toko)"}
         </button>
-        {googleError && <p className="mb-2 text-center text-sm text-rose-600">{googleError}</p>}
         <p className="mb-6 text-center text-xs text-slate-400">
           Belum punya toko? Login Google pertama otomatis membuatkan toko baru untukmu.
         </p>
