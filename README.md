@@ -252,6 +252,14 @@ cold start.
 13. **Kualitas kode** — struktur rapi (routes/lib/middleware terpisah), business logic penting
     (perhitungan harga, diskon, pajak, kembalian, validasi & pengurangan stok) sebagai fungsi
     murni dengan unit test.
+14. **Aplikasi Android** — APK yang bisa langsung diinstal, dibungkus lewat
+    [Capacitor](https://capacitorjs.com/) (`frontend/capacitor.config.json` + `frontend/android/`).
+    Aplikasinya memuat live URL yang sama persis (bukan salinan offline terpisah), jadi selalu
+    sinkron dengan versi web tanpa pipeline konten sendiri. Build APK-nya jalan lewat GitHub
+    Actions (`.github/workflows/build-apk.yml`, dipicu manual — lihat tombol "Generate Android" di
+    AI App Builder dashboard, bukan `npm run` biasa karena butuh Android SDK yang tidak perlu
+    dipasang lokal), hasilnya debug-signed dan otomatis terbit sebagai
+    [GitHub Release](https://github.com/dewatalaptop/retail-pos/releases/tag/android-latest).
 
 ## Mengaktifkan iklan AdSense
 
