@@ -216,7 +216,8 @@ cold start.
 6. **Struk** — ditampilkan setelah transaksi selesai, layout print-friendly (tombol "Cetak"
    memakai CSS khusus print), pakai nama toko, alamat, telepon, catatan kaki, dan
    [logo usaha](#pengaturan-toko) (kalau sudah diunggah di perangkat itu) sesuai
-   [Pengaturan](#pengaturan-toko).
+   [Pengaturan](#pengaturan-toko). Bisa juga dicetak langsung ke **printer thermal Bluetooth**
+   (lihat poin 15) lewat tombol "Cetak Bluetooth" begitu printer sudah terhubung.
 7. **Riwayat & laporan** — riwayat transaksi dengan filter tanggal dan status (kasir hanya melihat
    transaksinya sendiri kecuali diberi izin "Lihat semua transaksi"), laporan penjualan harian &
    bulanan (grafik batang sederhana), produk terlaris, total pendapatan — laporan sendiri butuh
@@ -264,7 +265,18 @@ cold start.
     (`@capacitor-firebase/authentication`), bukan popup/redirect berbasis WebView biasa — Google
     menolak menampilkan layar OAuth-nya di dalam WebView tertanam apa pun, jadi pendekatan web biasa
     tidak akan pernah berhasil di sini. Butuh SHA-1 sertifikat yang stabil (lihat
-    `frontend/android/debug.keystore`, sengaja dikomit) yang sudah didaftarkan ke Firebase.
+    `frontend/android/debug.keystore`, sengaja dikomit) yang sudah didaftarkan ke Firebase, dan
+    `android/app/build.gradle`'s `signingConfigs.debug` diarahkan eksplisit ke file keystore itu —
+    Gradle bisa diam-diam pakai keystore lain kalau dibiarkan pakai default implisit.
+15. **Printer struk Bluetooth** (halaman "Pengaturan" > kartu "Printer struk") — sambungkan printer
+    thermal ESC/POS lewat Bluetooth Low Energy (`@capacitor-community/bluetooth-le`), pilih ukuran
+    kertas 58mm/80mm, tes cetak, dan opsi cetak otomatis setiap transaksi selesai. Layout struk
+    dibuat sendiri lewat encoder ESC/POS (`frontend/src/lib/escpos.ts`, bukan library pihak ketiga
+    yang tipis dokumentasinya) supaya format & lebar kolom persis menyesuaikan ukuran kertas yang
+    dipilih. Koneksi & pengaturan kertas tersimpan per perangkat (localStorage), sama seperti logo
+    usaha — printer perlu dihubungkan ulang kalau ganti HP/tablet kasir. Kesalahan umum (Bluetooth
+    mati, Layanan Lokasi mati, izin ditolak, printer tidak ditemukan, printer terputus di tengah
+    cetak) ditampilkan sebagai pesan spesifik dalam Bahasa Indonesia, bukan pesan generik.
 
 ## Mengaktifkan iklan AdSense
 
