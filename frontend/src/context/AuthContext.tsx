@@ -96,7 +96,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // outside the WebView, then completes native Firebase auth —
         // getIdToken() after that returns a real Firebase ID token, not
         // the raw Google credential.
-        await FirebaseAuthentication.signInWithGoogle();
+        //
+        // Try the modern Credential Manager path first (the plugin's
+        // default), but fall back to the legacy GoogleSignInClient API on
+        // any failure — Credential Manager has a well-documented bug where
+        // it throws "[16] Account reauth failed" specifically on a
+        // device's FIRST sign-in with this app (no previously saved
+        // credential to "reauth" yet), which is every new store owner's
+        // very first experience with the app, confirmed via a real device
+        // (2026-09-04). The legacy API doesn't have this precondition —
+        // it always shows a plain account picker regardless of prior state.
+        try {
+          await FirebaseAuthentication.signInWithGoogle({ useCredentialManager: true });
+        } catch {
+          await FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false });
+        }
         const { token: idToken } = await FirebaseAuthentication.getIdToken();
         const loggedInUser = await exchangeForAppSession(idToken);
         setUser(loggedInUser);
