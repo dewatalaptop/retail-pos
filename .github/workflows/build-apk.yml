@@ -40,6 +40,36 @@ jobs:
       # not a rebuilt offline copy, so this just re-syncs config/plugins.
       - run: npx cap sync android
 
+      # Native Google Sign-In needs a stable SHA-1 fingerprint registered with
+      # the app's Firebase Android app config — a debug keystore Gradle
+      # auto-generates on first use would get a NEW random SHA-1 on every
+      # ephemeral CI runner, breaking sign-in every single build. Generate it
+      # once and commit it, so every future run (and every future project
+      # that copies this workflow) reuses the exact same identity. Uses the
+      # same well-known alias/password Android tooling itself defaults to
+      # (androiddebugkey / android), so nothing else needs to reference it —
+      # Gradle's default debug signing config picks up ~/.android/debug.keystore
+      # automatically as long as it's there before the build runs.
+      - name: Ensure a stable debug keystore exists
+        run: |
+          mkdir -p ~/.android
+          if [ -f android/debug.keystore ]; then
+            cp android/debug.keystore ~/.android/debug.keystore
+          else
+            keytool -genkeypair -v -keystore android/debug.keystore \
+              -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+            cp android/debug.keystore ~/.android/debug.keystore
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add android/debug.keystore
+            git commit -m "Add stable debug keystore for reproducible Android sign-in"
+            git push
+          fi
+          echo "SHA-1 fingerprint (register this with any OAuth client that needs it):"
+          keytool -list -v -keystore android/debug.keystore -storepass android -alias androiddebugkey | grep "SHA1:"
+
       - name: Build debug APK
         working-directory: frontend/android
         # gradlew's executable bit doesn't survive a commit made from a
