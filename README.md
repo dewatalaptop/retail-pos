@@ -260,6 +260,11 @@ cold start.
     AI App Builder dashboard, bukan `npm run` biasa karena butuh Android SDK yang tidak perlu
     dipasang lokal), hasilnya debug-signed dan otomatis terbit sebagai
     [GitHub Release](https://github.com/dewatalaptop/retail-pos/releases/tag/android-latest).
+    Login Google di dalam aplikasi Android memakai native Google Sign-In
+    (`@capacitor-firebase/authentication`), bukan popup/redirect berbasis WebView biasa — Google
+    menolak menampilkan layar OAuth-nya di dalam WebView tertanam apa pun, jadi pendekatan web biasa
+    tidak akan pernah berhasil di sini. Butuh SHA-1 sertifikat yang stabil (lihat
+    `frontend/android/debug.keystore`, sengaja dikomit) yang sudah didaftarkan ke Firebase.
 
 ## Mengaktifkan iklan AdSense
 
