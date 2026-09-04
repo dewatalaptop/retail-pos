@@ -16,7 +16,31 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Native Google Sign-In needs the SHA-1 actually baked into the built APK
+    // to match what's registered with Firebase. Gradle's *implicit* default
+    // debug signingConfig (an auto-discovered ~/.android/debug.keystore) was
+    // silently resolving to a DIFFERENT keystore than the one this project
+    // commits and registers a SHA-1 for — confirmed 2026-09-04 by comparing
+    // `apksigner verify --print-certs` on a real built APK (SHA-1
+    // 57:36:15:...) against the committed keystore's own `keytool -list`
+    // output (SHA-1 C7:10:78:..., the one actually registered in Firebase) —
+    // completely different certs, on every build, which is why native
+    // Google Sign-In kept failing with DEVELOPER_ERROR(10) even after every
+    // other config check came back correct. Pointing storeFile explicitly at
+    // the committed keystore removes the ambiguity — no implicit lookup left
+    // to silently resolve somewhere else.
+    signingConfigs {
+        debug {
+            storeFile file("../debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
