@@ -39,7 +39,13 @@ jobs:
 
       - name: Build debug APK
         working-directory: frontend/android
-        run: ./gradlew assembleDebug --no-daemon
+        # gradlew's executable bit doesn't survive a commit made from a
+        # Windows checkout (Git for Windows doesn't track the Unix mode bit
+        # the same way), so it silently loses +x — chmod it explicitly
+        # rather than relying on git to have preserved it.
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
 
       # Debug-signed (Android's default debug keystore, baked into the
       # Android SDK) — installable/sideloadable immediately with no keystore
