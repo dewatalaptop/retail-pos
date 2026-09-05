@@ -12,6 +12,7 @@ import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import CashiersPage from "./pages/CashiersPage";
 import HelpPage from "./pages/HelpPage";
+import DebtsPage from "./pages/DebtsPage";
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
           >
             <Route path="/" element={<CashierPage />} />
             <Route path="/riwayat" element={<HistoryPage />} />
+            <Route path="/kasbon" element={<DebtsPage />} />
             <Route path="/bantuan" element={<HelpPage />} />
             <Route
               path="/produk"

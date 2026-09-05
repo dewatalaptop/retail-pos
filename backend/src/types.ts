@@ -44,13 +44,19 @@ export interface TransactionRow {
   subtotal: number;
   discount_total: number;
   tax_total: number;
+  service_charge_percent: number;
+  service_charge_total: number;
   total: number;
-  payment_method: "tunai" | "kartu" | "qris";
+  payment_method: "tunai" | "kartu" | "qris" | "hutang";
   cash_received: number | null;
   change_due: number | null;
   status: "completed" | "voided";
   voided_at: string | null;
   void_reason: string | null;
+  table_number: string | null;
+  order_type: "dine_in" | "takeaway" | "delivery" | null;
+  customer_name: string | null;
+  debt_paid_at: string | null;
 }
 
 export interface HeldCartRow {
@@ -70,6 +76,8 @@ export interface StoreSettingsRow {
   receipt_footer: string;
   theme: string;
   default_tax_rate_percent: number;
+  business_mode: "toko" | "warung" | "restoran";
+  default_service_charge_percent: number;
   adsense_client_id: string;
   adsense_slot_footer: string;
   adsense_slot_reports: string;
@@ -85,4 +93,5 @@ export interface TransactionItemRow {
   qty: number;
   discount_percent: number;
   line_total: number;
+  note: string;
 }

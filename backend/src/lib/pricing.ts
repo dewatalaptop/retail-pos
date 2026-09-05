@@ -8,6 +8,7 @@ export interface CartTotals {
   subtotal: number;
   discountTotal: number;
   taxTotal: number;
+  serviceChargeTotal: number;
   total: number;
 }
 
@@ -28,7 +29,17 @@ export function computeLineTotal(item: CartItemInput): number {
   return toRupiah(discounted);
 }
 
-export function computeCartTotals(items: CartItemInput[], taxRatePercent = 0): CartTotals {
+// serviceChargePercent is restoran mode's "biaya layanan" — computed on the
+// same post-discount base as tax, and summed independently (not compounded
+// with tax), matching how most Indonesian restaurants actually itemize it
+// on a receipt (subtotal, then service charge, then tax, or vice versa —
+// order of listing doesn't change the math since both are simple
+// percentages of the same base).
+export function computeCartTotals(
+  items: CartItemInput[],
+  taxRatePercent = 0,
+  serviceChargePercent = 0
+): CartTotals {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
   const discountTotal = items.reduce((sum, item) => {
     const discountPercent = item.discountPercent ?? 0;
@@ -36,12 +47,14 @@ export function computeCartTotals(items: CartItemInput[], taxRatePercent = 0): C
   }, 0);
   const taxable = subtotal - discountTotal;
   const taxTotal = taxable * (taxRatePercent / 100);
-  const total = taxable + taxTotal;
+  const serviceChargeTotal = taxable * (serviceChargePercent / 100);
+  const total = taxable + taxTotal + serviceChargeTotal;
 
   return {
     subtotal: toRupiah(subtotal),
     discountTotal: toRupiah(discountTotal),
     taxTotal: toRupiah(taxTotal),
+    serviceChargeTotal: toRupiah(serviceChargeTotal),
     total: toRupiah(total),
   };
 }

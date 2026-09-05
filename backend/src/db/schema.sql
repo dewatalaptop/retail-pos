@@ -50,13 +50,25 @@ CREATE TABLE IF NOT EXISTS transactions (
   subtotal REAL NOT NULL,
   discount_total REAL NOT NULL DEFAULT 0,
   tax_total REAL NOT NULL DEFAULT 0,
+  service_charge_percent REAL NOT NULL DEFAULT 0,
+  service_charge_total REAL NOT NULL DEFAULT 0,
   total REAL NOT NULL,
-  payment_method TEXT NOT NULL CHECK (payment_method IN ('tunai', 'kartu', 'qris')),
+  -- 'hutang' = warung mode's credit/tab sale — money not actually received
+  -- yet, see customer_name/debt_paid_at below.
+  payment_method TEXT NOT NULL CHECK (payment_method IN ('tunai', 'kartu', 'qris', 'hutang')),
   cash_received REAL,
   change_due REAL,
   status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('completed', 'voided')),
   voided_at TEXT,
-  void_reason TEXT
+  void_reason TEXT,
+  -- Restoran mode:
+  table_number TEXT,
+  order_type TEXT CHECK (order_type IS NULL OR order_type IN ('dine_in', 'takeaway', 'delivery')),
+  -- Warung mode credit sales: customer_name identifies who owes it,
+  -- debt_paid_at NULL means still unpaid (see routes/transactions.ts's
+  -- /debts/unpaid + /:id/mark-paid).
+  customer_name TEXT,
+  debt_paid_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS transaction_items (
@@ -67,7 +79,11 @@ CREATE TABLE IF NOT EXISTS transaction_items (
   price_snapshot REAL NOT NULL,
   qty INTEGER NOT NULL,
   discount_percent REAL NOT NULL DEFAULT 0,
-  line_total REAL NOT NULL
+  line_total REAL NOT NULL,
+  -- Restoran mode: free-text modifier/preparation note ("pedas sedang",
+  -- "tanpa bawang") — a full structured-modifier system is out of scope for
+  -- now, this covers the common case at near-zero complexity.
+  note TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS held_carts (
@@ -87,6 +103,11 @@ CREATE TABLE IF NOT EXISTS store_settings (
   receipt_footer TEXT NOT NULL DEFAULT 'Terima kasih telah berbelanja!',
   theme TEXT NOT NULL DEFAULT 'indigo',
   default_tax_rate_percent REAL NOT NULL DEFAULT 0,
+  -- toko = perilaku asli (tidak berubah). warung = tambah metode bayar
+  -- hutang/kasbon. restoran = nomor meja, tipe pesanan, catatan per item,
+  -- biaya layanan. Lihat routes/settings.ts's BUSINESS_MODES.
+  business_mode TEXT NOT NULL DEFAULT 'toko' CHECK (business_mode IN ('toko', 'warung', 'restoran')),
+  default_service_charge_percent REAL NOT NULL DEFAULT 0,
   adsense_client_id TEXT NOT NULL DEFAULT '',
   adsense_slot_footer TEXT NOT NULL DEFAULT '',
   adsense_slot_reports TEXT NOT NULL DEFAULT '',

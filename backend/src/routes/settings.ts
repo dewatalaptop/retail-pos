@@ -13,6 +13,12 @@ export const settingsRouter = Router();
 // persisted (the CSS override for it simply wouldn't exist).
 export const THEME_NAMES = ["indigo", "emerald", "amber", "rose", "sky", "slate"] as const;
 
+// toko = perilaku asli, tidak berubah. warung = tambah metode bayar
+// hutang/kasbon (lihat routes/transactions.ts). restoran = nomor meja, tipe
+// pesanan, catatan per item, biaya layanan. See CashierPage.tsx for how the
+// UI adapts per mode.
+export const BUSINESS_MODES = ["toko", "warung", "restoran"] as const;
+
 settingsRouter.use(requireAuth);
 
 function getSettings(storeId: number): StoreSettingsRow {
@@ -49,6 +55,8 @@ settingsRouter.get("/", (req, res) => {
     receiptFooter: s.receipt_footer,
     theme: s.theme,
     defaultTaxRatePercent: s.default_tax_rate_percent,
+    businessMode: s.business_mode,
+    defaultServiceChargePercent: s.default_service_charge_percent,
     ...getPlatformAdsenseConfig(),
   });
 });
@@ -60,6 +68,8 @@ const settingsSchema = z.object({
   receiptFooter: z.string().default(""),
   theme: z.enum(THEME_NAMES).default("indigo"),
   defaultTaxRatePercent: z.number().min(0).max(100).default(0),
+  businessMode: z.enum(BUSINESS_MODES).default("toko"),
+  defaultServiceChargePercent: z.number().min(0).max(100).default(0),
 });
 
 settingsRouter.put(
@@ -73,8 +83,19 @@ settingsRouter.put(
     const s = parsed.data;
     db.prepare(
       `UPDATE store_settings SET store_name=?, store_address=?, store_phone=?, receipt_footer=?,
-       theme=?, default_tax_rate_percent=?, updated_at=datetime('now') WHERE store_id=?`
-    ).run(s.storeName, s.storeAddress, s.storePhone, s.receiptFooter, s.theme, s.defaultTaxRatePercent, req.user!.storeId);
+       theme=?, default_tax_rate_percent=?, business_mode=?, default_service_charge_percent=?,
+       updated_at=datetime('now') WHERE store_id=?`
+    ).run(
+      s.storeName,
+      s.storeAddress,
+      s.storePhone,
+      s.receiptFooter,
+      s.theme,
+      s.defaultTaxRatePercent,
+      s.businessMode,
+      s.defaultServiceChargePercent,
+      req.user!.storeId
+    );
     await notifyDbChanged();
     res.json({ ok: true });
   })

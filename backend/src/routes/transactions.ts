@@ -12,20 +12,35 @@ export const transactionsRouter = Router();
 
 transactionsRouter.use(requireAuth);
 
-const saleSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        productId: z.number().int().positive(),
-        qty: z.number().int().positive(),
-        discountPercent: z.number().min(0).max(100).default(0),
-      })
-    )
-    .min(1),
-  paymentMethod: z.enum(["tunai", "kartu", "qris"]),
-  cashReceived: z.number().nonnegative().optional(),
-  taxRatePercent: z.number().min(0).max(100).default(0),
-});
+const saleSchema = z
+  .object({
+    items: z
+      .array(
+        z.object({
+          productId: z.number().int().positive(),
+          qty: z.number().int().positive(),
+          discountPercent: z.number().min(0).max(100).default(0),
+          note: z.string().default(""),
+        })
+      )
+      .min(1),
+    paymentMethod: z.enum(["tunai", "kartu", "qris", "hutang"]),
+    cashReceived: z.number().nonnegative().optional(),
+    taxRatePercent: z.number().min(0).max(100).default(0),
+    // Restoran mode — all optional so toko/warung mode requests are
+    // unaffected; the frontend only sends these when business_mode calls for
+    // them.
+    serviceChargePercent: z.number().min(0).max(100).default(0),
+    tableNumber: z.string().trim().max(50).optional(),
+    orderType: z.enum(["dine_in", "takeaway", "delivery"]).optional(),
+    // Warung mode credit sale — required by the check below when
+    // paymentMethod is 'hutang'.
+    customerName: z.string().trim().max(100).optional(),
+  })
+  .refine((data) => data.paymentMethod !== "hutang" || !!data.customerName, {
+    message: "Nama pelanggan wajib diisi untuk transaksi hutang",
+    path: ["customerName"],
+  });
 
 transactionsRouter.post(
   "/",
@@ -34,7 +49,16 @@ transactionsRouter.post(
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Data tidak valid" });
     }
-    const { items, paymentMethod, cashReceived, taxRatePercent } = parsed.data;
+    const {
+      items,
+      paymentMethod,
+      cashReceived,
+      taxRatePercent,
+      serviceChargePercent,
+      tableNumber,
+      orderType,
+      customerName,
+    } = parsed.data;
     const storeId = req.user!.storeId;
 
     const products = items.map((item) => {
@@ -69,7 +93,7 @@ transactionsRouter.post(
       qty: item.qty,
       discountPercent: item.discountPercent,
     }));
-    const totals = computeCartTotals(cartItems, taxRatePercent);
+    const totals = computeCartTotals(cartItems, taxRatePercent, serviceChargePercent);
 
     let changeDue: number | null = null;
     if (paymentMethod === "tunai") {
@@ -85,8 +109,8 @@ transactionsRouter.post(
     try {
       const txResult = db
         .prepare(
-          `INSERT INTO transactions (store_id, user_id, subtotal, discount_total, tax_total, total, payment_method, cash_received, change_due)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO transactions (store_id, user_id, subtotal, discount_total, tax_total, service_charge_percent, service_charge_total, total, payment_method, cash_received, change_due, table_number, order_type, customer_name)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           storeId,
@@ -94,10 +118,15 @@ transactionsRouter.post(
           totals.subtotal,
           totals.discountTotal,
           totals.taxTotal,
+          serviceChargePercent,
+          totals.serviceChargeTotal,
           totals.total,
           paymentMethod,
           cashReceived ?? null,
-          changeDue
+          changeDue,
+          tableNumber ?? null,
+          orderType ?? null,
+          customerName ?? null
         );
       const transactionId = txResult.lastInsertRowid;
 
@@ -112,9 +141,9 @@ transactionsRouter.post(
           discountPercent: item.discountPercent,
         });
         db.prepare(
-          `INSERT INTO transaction_items (transaction_id, product_id, name_snapshot, price_snapshot, qty, discount_percent, line_total)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`
-        ).run(transactionId, product.id, product.name, product.price, item.qty, item.discountPercent, lineTotal);
+          `INSERT INTO transaction_items (transaction_id, product_id, name_snapshot, price_snapshot, qty, discount_percent, line_total, note)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(transactionId, product.id, product.name, product.price, item.qty, item.discountPercent, lineTotal, item.note);
 
         const stockBefore = runningStock.get(product.id) ?? product.stock;
         const newStock = deductStock(stockBefore, item.qty);
@@ -132,6 +161,43 @@ transactionsRouter.post(
       db.exec("ROLLBACK");
       res.status(err.status ?? 500).json({ error: err.message ?? "Gagal menyimpan transaksi" });
     }
+  })
+);
+
+// Warung mode: customer credit tracking. Registered before GET "/:id" so a
+// literal "debts" segment is never mistaken for a transaction id (Express
+// wouldn't actually confuse a 2-segment path with a 1-segment `:id` pattern
+// either way, but keeping static routes ahead of dynamic ones is the
+// conventional, least-surprising order).
+transactionsRouter.get("/debts/unpaid", (req, res) => {
+  let sql = "SELECT * FROM transactions WHERE store_id = ? AND payment_method = 'hutang' AND debt_paid_at IS NULL AND status = 'completed'";
+  const params: (string | number)[] = [req.user!.storeId];
+  if (req.user!.role === "kasir" && !req.user!.permissions.canViewAllTransactions) {
+    sql += " AND user_id = ?";
+    params.push(req.user!.userId);
+  }
+  sql += " ORDER BY created_at ASC";
+  const transactions = db.prepare(sql).all(...params) as unknown as TransactionRow[];
+  res.json({ transactions });
+});
+
+transactionsRouter.post(
+  "/:id/mark-paid",
+  asyncHandler(async (req, res) => {
+    const transaction = db
+      .prepare("SELECT * FROM transactions WHERE id = ? AND store_id = ?")
+      .get(req.params.id, req.user!.storeId) as unknown as TransactionRow | undefined;
+    if (!transaction) return res.status(404).json({ error: "Transaksi tidak ditemukan" });
+    if (transaction.payment_method !== "hutang") {
+      return res.status(409).json({ error: "Transaksi ini bukan transaksi hutang" });
+    }
+    if (transaction.debt_paid_at) {
+      return res.status(409).json({ error: "Hutang ini sudah ditandai lunas sebelumnya" });
+    }
+    db.prepare("UPDATE transactions SET debt_paid_at = datetime('now') WHERE id = ?").run(req.params.id);
+    await notifyDbChanged();
+    const updated = db.prepare("SELECT * FROM transactions WHERE id = ?").get(req.params.id);
+    res.json({ transaction: updated });
   })
 );
 

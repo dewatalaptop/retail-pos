@@ -7,6 +7,7 @@ export interface ReceiptItem {
   qty: number;
   price: number;
   discountPercent: number;
+  note?: string;
 }
 
 export interface ReceiptData {
@@ -15,12 +16,24 @@ export interface ReceiptData {
   subtotal: number;
   discountTotal: number;
   taxTotal: number;
+  serviceChargeTotal?: number;
   total: number;
   paymentMethod: string;
   cashReceived?: number;
   changeDue?: number;
   createdAt: string;
+  // Restoran mode
+  tableNumber?: string;
+  orderType?: "dine_in" | "takeaway" | "delivery";
+  // Warung mode (payment method 'hutang')
+  customerName?: string;
 }
+
+const ORDER_TYPE_LABEL: Record<string, string> = {
+  dine_in: "Makan di tempat",
+  takeaway: "Bawa pulang",
+  delivery: "Diantar",
+};
 
 function rp(n: number) {
   return `Rp${n.toLocaleString("id-ID")}`;
@@ -84,6 +97,13 @@ export default function Receipt({
         {storePhone && <p className="text-center text-xs text-slate-500">{storePhone}</p>}
         <p className="text-center text-xs text-slate-500">Struk Transaksi #{data.transactionId}</p>
         <p className="text-center text-xs text-slate-500">{new Date(data.createdAt).toLocaleString("id-ID")}</p>
+        {(data.tableNumber || data.orderType) && (
+          <p className="text-center text-xs text-slate-500">
+            {data.tableNumber && `Meja ${data.tableNumber}`}
+            {data.tableNumber && data.orderType && " · "}
+            {data.orderType && ORDER_TYPE_LABEL[data.orderType]}
+          </p>
+        )}
         <hr className="my-2 border-dashed" />
         {data.items.map((item, i) => (
           <div key={i} className="mb-1">
@@ -97,6 +117,7 @@ export default function Receipt({
               </span>
               <span>{rp(Math.round(item.qty * item.price * (1 - item.discountPercent / 100)))}</span>
             </div>
+            {item.note && <div className="text-xs italic text-slate-500">↳ {item.note}</div>}
           </div>
         ))}
         <hr className="my-2 border-dashed" />
@@ -112,6 +133,12 @@ export default function Receipt({
           <span>Pajak</span>
           <span>{rp(data.taxTotal)}</span>
         </div>
+        {!!data.serviceChargeTotal && (
+          <div className="flex justify-between">
+            <span>Biaya layanan</span>
+            <span>{rp(data.serviceChargeTotal)}</span>
+          </div>
+        )}
         <div className="flex justify-between font-bold">
           <span>Total</span>
           <span>{rp(data.total)}</span>
@@ -121,6 +148,12 @@ export default function Receipt({
           <span>Bayar ({data.paymentMethod})</span>
           <span>{data.cashReceived !== undefined ? rp(data.cashReceived) : "-"}</span>
         </div>
+        {data.customerName && (
+          <div className="flex justify-between">
+            <span>Atas nama</span>
+            <span>{data.customerName}</span>
+          </div>
+        )}
         {data.changeDue !== undefined && (
           <div className="flex justify-between">
             <span>Kembalian</span>

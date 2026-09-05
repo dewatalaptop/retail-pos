@@ -14,6 +14,7 @@ const cartItemSchema = z.object({
   productId: z.number().int().positive(),
   qty: z.number().int().positive(),
   discountPercent: z.number().min(0).max(100).default(0),
+  note: z.string().default(""),
 });
 
 const holdSchema = z.object({

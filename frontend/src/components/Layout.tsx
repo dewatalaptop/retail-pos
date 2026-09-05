@@ -33,6 +33,7 @@ export default function Layout() {
   const navLinks: { to: string; end?: boolean; label: string }[] = [
     { to: "/", end: true, label: "Kasir" },
     { to: "/riwayat", label: "Riwayat" },
+    ...(settings.businessMode === "warung" ? [{ to: "/kasbon", label: "Kasbon" }] : []),
     ...(isAdmin || user?.permissions.canManageProducts ? [{ to: "/produk", label: "Produk" }] : []),
     ...(isAdmin || user?.permissions.canViewReports ? [{ to: "/laporan", label: "Laporan" }] : []),
     ...(isAdmin ? [{ to: "/kasir", label: "Kelola Kasir" }, { to: "/pengaturan", label: "Pengaturan" }] : []),

@@ -6,6 +6,8 @@ import { useStoreLogo } from "../hooks/useStoreLogo";
 import { THEMES } from "../lib/themes";
 import { PAPER_WIDTHS, type PaperWidthKey } from "../lib/escpos";
 
+type BusinessMode = "toko" | "warung" | "restoran";
+
 interface FullSettings {
   storeName: string;
   storeAddress: string;
@@ -13,6 +15,8 @@ interface FullSettings {
   receiptFooter: string;
   theme: string;
   defaultTaxRatePercent: number;
+  businessMode: BusinessMode;
+  defaultServiceChargePercent: number;
 }
 
 const EMPTY: FullSettings = {
@@ -22,7 +26,15 @@ const EMPTY: FullSettings = {
   receiptFooter: "",
   theme: "indigo",
   defaultTaxRatePercent: 0,
+  businessMode: "toko",
+  defaultServiceChargePercent: 0,
 };
+
+const BUSINESS_MODES: { key: BusinessMode; label: string; description: string; icon: string }[] = [
+  { key: "toko", label: "Toko", icon: "🏬", description: "Kasir langsung — scan/pilih produk, bayar, selesai." },
+  { key: "warung", label: "Warung", icon: "🏠", description: "Seperti Toko, plus metode bayar Hutang/Kasbon untuk pelanggan langganan." },
+  { key: "restoran", label: "Restoran", icon: "🍽️", description: "Nomor meja, tipe pesanan, catatan per item, dan biaya layanan." },
+];
 
 function Field({
   label,
@@ -301,6 +313,32 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4">
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-1 font-semibold text-slate-800">Jenis usaha</h2>
+        <p className="mb-4 text-sm text-slate-500">
+          Menentukan fitur apa yang muncul di halaman Kasir — pilih yang paling cocok dengan cara
+          usaha Anda berjalan. Bisa diganti kapan saja.
+        </p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {BUSINESS_MODES.map((mode) => (
+            <button
+              key={mode.key}
+              type="button"
+              onClick={() => set("businessMode", mode.key)}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left ${
+                form.businessMode === mode.key
+                  ? "border-[var(--brand-500)] bg-[var(--brand-50)]"
+                  : "border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              <span className="text-lg" aria-hidden="true">{mode.icon}</span>
+              <span className="text-sm font-semibold text-slate-800">{mode.label}</span>
+              <span className="text-xs text-slate-500">{mode.description}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="mb-1 font-semibold text-slate-800">Profil toko</h2>
         <p className="mb-4 text-sm text-slate-500">
           Muncul di struk transaksi dan di judul aplikasi.
@@ -329,17 +367,33 @@ export default function SettingsPage() {
           mengetiknya satu per satu — masih bisa diubah manual per transaksi kalau perlu (mis. pajak
           restoran/PB1, atau service charge).
         </p>
-        <div className="max-w-xs">
-          <label className="mb-1 block text-sm font-medium text-slate-700">Tarif pajak default (%)</label>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={0.1}
-            value={form.defaultTaxRatePercent}
-            onChange={(e) => set("defaultTaxRatePercent", Math.min(100, Math.max(0, Number(e.target.value))))}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-500)]"
-          />
+        <div className="flex flex-wrap gap-4">
+          <div className="max-w-xs">
+            <label className="mb-1 block text-sm font-medium text-slate-700">Tarif pajak default (%)</label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={0.1}
+              value={form.defaultTaxRatePercent}
+              onChange={(e) => set("defaultTaxRatePercent", Math.min(100, Math.max(0, Number(e.target.value))))}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-500)]"
+            />
+          </div>
+          {form.businessMode === "restoran" && (
+            <div className="max-w-xs">
+              <label className="mb-1 block text-sm font-medium text-slate-700">Biaya layanan default (%)</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={0.1}
+                value={form.defaultServiceChargePercent}
+                onChange={(e) => set("defaultServiceChargePercent", Math.min(100, Math.max(0, Number(e.target.value))))}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-500)]"
+              />
+            </div>
+          )}
         </div>
       </div>
 

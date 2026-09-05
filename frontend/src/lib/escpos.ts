@@ -1,5 +1,11 @@
 import type { ReceiptData } from "../components/Receipt";
 
+const ORDER_TYPE_LABEL: Record<string, string> = {
+  dine_in: "Makan di tempat",
+  takeaway: "Bawa pulang",
+  delivery: "Diantar",
+};
+
 // Standard ESC/POS control bytes — the same command set virtually every
 // thermal receipt printer (58mm and 80mm alike) understands out of the box.
 const ESC = 0x1b;
@@ -115,6 +121,14 @@ export function buildReceiptBytes(data: ReceiptData, opts: ReceiptPrintOptions):
   if (opts.storePhone) out.push(...textBytes(opts.storePhone));
   out.push(...textBytes(`Struk Transaksi #${data.transactionId}`));
   out.push(...textBytes(new Date(data.createdAt).toLocaleString("id-ID")));
+  if (data.tableNumber || data.orderType) {
+    const orderTypeLabel = data.orderType ? ORDER_TYPE_LABEL[data.orderType] : "";
+    out.push(
+      ...textBytes(
+        [data.tableNumber ? `Meja ${data.tableNumber}` : "", orderTypeLabel].filter(Boolean).join(" - ")
+      )
+    );
+  }
   out.push(...CMD.alignLeft);
   out.push(...separator(width));
 
@@ -123,12 +137,16 @@ export function buildReceiptBytes(data: ReceiptData, opts: ReceiptPrintOptions):
     const qtyPrice = `${item.qty} x ${rp(item.price)}${item.discountPercent > 0 ? ` (-${item.discountPercent}%)` : ""}`;
     const lineTotal = rp(Math.round(item.qty * item.price * (1 - item.discountPercent / 100)));
     out.push(...textBytes(twoColumn(qtyPrice, lineTotal, width)));
+    if (item.note) out.push(...textBytes(`  > ${item.note}`));
   }
 
   out.push(...separator(width));
   out.push(...textBytes(twoColumn("Subtotal", rp(data.subtotal), width)));
   out.push(...textBytes(twoColumn("Diskon", `-${rp(data.discountTotal)}`, width)));
   out.push(...textBytes(twoColumn("Pajak", rp(data.taxTotal), width)));
+  if (data.serviceChargeTotal) {
+    out.push(...textBytes(twoColumn("Biaya layanan", rp(data.serviceChargeTotal), width)));
+  }
   out.push(...CMD.boldOn);
   out.push(...textBytes(twoColumn("Total", rp(data.total), width)));
   out.push(...CMD.boldOff);
@@ -139,6 +157,9 @@ export function buildReceiptBytes(data: ReceiptData, opts: ReceiptPrintOptions):
       twoColumn(`Bayar (${data.paymentMethod})`, data.cashReceived !== undefined ? rp(data.cashReceived) : "-", width)
     )
   );
+  if (data.customerName) {
+    out.push(...textBytes(twoColumn("Atas nama", data.customerName, width)));
+  }
   if (data.changeDue !== undefined) {
     out.push(...textBytes(twoColumn("Kembalian", rp(data.changeDue), width)));
   }

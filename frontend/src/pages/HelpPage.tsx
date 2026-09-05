@@ -57,6 +57,32 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    title: "Jenis usaha: Toko, Warung, atau Restoran",
+    body: (
+      <div className="space-y-2">
+        <p>
+          Pemilik toko memilih jenis usaha di menu <strong>Pengaturan</strong> — ini menentukan
+          fitur apa yang muncul di halaman Kasir untuk semua kasir. Bisa diganti kapan saja, tidak
+          mengubah data yang sudah ada.
+        </p>
+        <ul className="list-disc space-y-1.5 pl-5">
+          <li><strong>Toko</strong> — perilaku standar: pilih produk, bayar, selesai. Cocok untuk toko kelontong, minimarket, dsb.</li>
+          <li>
+            <strong>Warung</strong> — sama seperti Toko, plus metode bayar <em>Hutang/Kasbon</em>
+            untuk pelanggan langganan yang bayar belakangan (perlu diisi nama pelanggan). Semua
+            hutang yang belum lunas muncul di menu <strong>Kasbon</strong> yang baru, dengan tombol
+            "Tandai lunas" begitu pelanggan membayar.
+          </li>
+          <li>
+            <strong>Restoran</strong> — tambahan nomor meja & tipe pesanan (makan di tempat/bawa
+            pulang/diantar) yang dicatat di setiap transaksi, catatan bebas per item (mis. "tanpa
+            es", "pedas sedang"), dan biaya layanan (%) yang dihitung terpisah dari pajak.
+          </li>
+        </ul>
+      </div>
+    ),
+  },
+  {
     title: "Riwayat & pembatalan transaksi",
     body: (
       <div className="space-y-2">

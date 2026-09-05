@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { api } from "../api/client";
 
+export type BusinessMode = "toko" | "warung" | "restoran";
+
 export interface StoreSettings {
   storeName: string;
   storeAddress: string;
@@ -8,6 +10,8 @@ export interface StoreSettings {
   receiptFooter: string;
   theme: string;
   defaultTaxRatePercent: number;
+  businessMode: BusinessMode;
+  defaultServiceChargePercent: number;
   adsenseClientId: string;
   adsenseSlotFooter: string;
   adsenseSlotReports: string;
@@ -20,6 +24,8 @@ const DEFAULT_SETTINGS: StoreSettings = {
   receiptFooter: "Terima kasih telah berbelanja!",
   theme: "indigo",
   defaultTaxRatePercent: 0,
+  businessMode: "toko",
+  defaultServiceChargePercent: 0,
   adsenseClientId: "",
   adsenseSlotFooter: "",
   adsenseSlotReports: "",

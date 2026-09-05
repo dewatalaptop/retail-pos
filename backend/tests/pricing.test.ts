@@ -45,7 +45,20 @@ describe("computeCartTotals", () => {
 
   it("returns zeros for an empty cart", () => {
     const totals = computeCartTotals([]);
-    expect(totals).toEqual({ subtotal: 0, discountTotal: 0, taxTotal: 0, total: 0 });
+    expect(totals).toEqual({ subtotal: 0, discountTotal: 0, taxTotal: 0, serviceChargeTotal: 0, total: 0 });
+  });
+
+  it("applies service charge independently from tax, both on the post-discount amount (restoran mode)", () => {
+    const totals = computeCartTotals([{ price: 100000, qty: 1 }], 10, 5);
+    // 100000, +5% service charge = 5000, +10% tax = 10000 -> total 115000
+    expect(totals.serviceChargeTotal).toBe(5000);
+    expect(totals.taxTotal).toBe(10000);
+    expect(totals.total).toBe(115000);
+  });
+
+  it("defaults service charge to zero when not provided", () => {
+    const totals = computeCartTotals([{ price: 50000, qty: 1 }], 10);
+    expect(totals.serviceChargeTotal).toBe(0);
   });
 });
 

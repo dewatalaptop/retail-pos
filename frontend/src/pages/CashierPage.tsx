@@ -18,12 +18,13 @@ interface CartLine {
   product: Product;
   qty: number;
   discountPercent: number;
+  note: string;
 }
 
 interface HeldCart {
   id: number;
   label: string;
-  items: { productId: number; qty: number; discountPercent: number }[];
+  items: { productId: number; qty: number; discountPercent: number; note?: string }[];
   createdAt: string;
 }
 
@@ -41,9 +42,15 @@ export default function CashierPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<"tunai" | "kartu" | "qris">("tunai");
+  const [paymentMethod, setPaymentMethod] = useState<"tunai" | "kartu" | "qris" | "hutang">("tunai");
   const [taxRatePercent, setTaxRatePercent] = useState(0);
+  const [serviceChargePercent, setServiceChargePercent] = useState(0);
   const [cashReceived, setCashReceived] = useState<string>("");
+  // Restoran mode
+  const [tableNumber, setTableNumber] = useState("");
+  const [orderType, setOrderType] = useState<"dine_in" | "takeaway" | "delivery">("dine_in");
+  // Warung mode (payment method 'hutang')
+  const [customerName, setCustomerName] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
@@ -62,8 +69,13 @@ export default function CashierPage() {
   // applies once settings have actually loaded (see SettingsContext's
   // `loading` flag) so it doesn't clobber a mid-cart manual override with
   // the brief 0 the context starts with before its fetch resolves.
+  const businessMode = settings.businessMode;
+
   useEffect(() => {
-    if (!settingsLoading) setTaxRatePercent(settings.defaultTaxRatePercent);
+    if (!settingsLoading) {
+      setTaxRatePercent(settings.defaultTaxRatePercent);
+      setServiceChargePercent(settings.defaultServiceChargePercent);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsLoading]);
 
@@ -100,7 +112,7 @@ export default function CashierPage() {
           l.product.id === product.id ? { ...l, qty: Math.min(l.qty + 1, product.stock) } : l
         );
       }
-      return [...prev, { product, qty: 1, discountPercent: 0 }];
+      return [...prev, { product, qty: 1, discountPercent: 0, note: "" }];
     });
   }
 
@@ -171,12 +183,23 @@ export default function CashierPage() {
     );
     const taxable = subtotal - discountTotal;
     const taxTotal = taxable * (taxRatePercent / 100);
-    const total = Math.round(taxable + taxTotal);
-    return { subtotal: Math.round(subtotal), discountTotal: Math.round(discountTotal), taxTotal: Math.round(taxTotal), total };
-  }, [cart, taxRatePercent]);
+    const serviceChargeTotal = businessMode === "restoran" ? taxable * (serviceChargePercent / 100) : 0;
+    const total = Math.round(taxable + taxTotal + serviceChargeTotal);
+    return {
+      subtotal: Math.round(subtotal),
+      discountTotal: Math.round(discountTotal),
+      taxTotal: Math.round(taxTotal),
+      serviceChargeTotal: Math.round(serviceChargeTotal),
+      total,
+    };
+  }, [cart, taxRatePercent, serviceChargePercent, businessMode]);
 
   const cashReceivedNum = Number(cashReceived) || 0;
   const changeDue = paymentMethod === "tunai" ? cashReceivedNum - totals.total : 0;
+  const canSubmit =
+    cart.length > 0 &&
+    !(paymentMethod === "tunai" && changeDue < 0) &&
+    !(paymentMethod === "hutang" && !customerName.trim());
 
   async function submitSale() {
     if (cart.length === 0) return;
@@ -192,28 +215,41 @@ export default function CashierPage() {
               productId: l.product.id,
               qty: l.qty,
               discountPercent: l.discountPercent,
+              note: l.note,
             })),
             paymentMethod,
             cashReceived: paymentMethod === "tunai" ? cashReceivedNum : undefined,
             taxRatePercent,
+            ...(businessMode === "restoran"
+              ? { serviceChargePercent, tableNumber: tableNumber.trim() || undefined, orderType }
+              : {}),
+            ...(paymentMethod === "hutang" ? { customerName: customerName.trim() } : {}),
           }),
         }
       );
       setReceipt({
         transactionId: res.transactionId,
-        items: cart.map((l) => ({ name: l.product.name, qty: l.qty, price: l.product.price, discountPercent: l.discountPercent })),
+        items: cart.map((l) => ({ name: l.product.name, qty: l.qty, price: l.product.price, discountPercent: l.discountPercent, note: l.note })),
         subtotal: res.subtotal,
         discountTotal: res.discountTotal,
         taxTotal: res.taxTotal,
+        serviceChargeTotal: res.serviceChargeTotal || undefined,
         total: res.total,
         paymentMethod,
         cashReceived: paymentMethod === "tunai" ? cashReceivedNum : undefined,
         changeDue: res.changeDue ?? undefined,
+        tableNumber: businessMode === "restoran" ? tableNumber.trim() || undefined : undefined,
+        orderType: businessMode === "restoran" ? orderType : undefined,
+        customerName: paymentMethod === "hutang" ? customerName.trim() : undefined,
         createdAt: new Date().toISOString(),
       });
       setCart([]);
       setCashReceived("");
       setTaxRatePercent(settings.defaultTaxRatePercent);
+      setServiceChargePercent(settings.defaultServiceChargePercent);
+      setTableNumber("");
+      setCustomerName("");
+      setPaymentMethod("tunai");
       loadProducts();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Gagal menyimpan transaksi");
@@ -230,7 +266,7 @@ export default function CashierPage() {
         method: "POST",
         body: JSON.stringify({
           label: holdLabel,
-          items: cart.map((l) => ({ productId: l.product.id, qty: l.qty, discountPercent: l.discountPercent })),
+          items: cart.map((l) => ({ productId: l.product.id, qty: l.qty, discountPercent: l.discountPercent, note: l.note })),
         }),
       });
       setCart([]);
@@ -257,7 +293,12 @@ export default function CashierPage() {
         missing.push(`#${item.productId}`);
         continue;
       }
-      lines.push({ product, qty: Math.min(item.qty, Math.max(product.stock, 0)), discountPercent: item.discountPercent });
+      lines.push({
+        product,
+        qty: Math.min(item.qty, Math.max(product.stock, 0)),
+        discountPercent: item.discountPercent,
+        note: item.note ?? "",
+      });
     }
     setCart(lines);
     setShowHeldCarts(false);
@@ -465,6 +506,14 @@ export default function CashierPage() {
                   className="w-16 rounded border border-slate-300 px-1.5 py-1.5"
                 />
               </div>
+              {businessMode === "restoran" && (
+                <input
+                  value={l.note}
+                  onChange={(e) => updateLine(l.product.id, { note: e.target.value })}
+                  placeholder="Catatan (mis. tanpa es, pedas sedang)"
+                  className="mt-1.5 w-full rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 placeholder:text-slate-400"
+                />
+              )}
             </div>
           ))}
           {cart.length === 0 && <p className="text-sm text-slate-400">Keranjang kosong.</p>}
@@ -475,7 +524,7 @@ export default function CashierPage() {
             <input
               value={holdLabel}
               onChange={(e) => setHoldLabel(e.target.value)}
-              placeholder="Label (mis. Meja 3)"
+              placeholder={businessMode === "restoran" ? "Nomor meja (mis. Meja 3)" : "Label"}
               className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
             />
             <button
@@ -485,6 +534,39 @@ export default function CashierPage() {
             >
               Tahan
             </button>
+          </div>
+        )}
+
+        {businessMode === "restoran" && (
+          <div className="mt-4 flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+            <div className="flex gap-2">
+              <input
+                value={tableNumber}
+                onChange={(e) => setTableNumber(e.target.value)}
+                placeholder="Nomor meja"
+                className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+              />
+              <select
+                value={orderType}
+                onChange={(e) => setOrderType(e.target.value as typeof orderType)}
+                className="shrink-0 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+              >
+                <option value="dine_in">Makan di tempat</option>
+                <option value="takeaway">Bawa pulang</option>
+                <option value="delivery">Diantar</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <label>Biaya layanan %</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={serviceChargePercent}
+                onChange={(e) => setServiceChargePercent(Number(e.target.value))}
+                className="w-16 rounded border border-slate-300 px-1 py-0.5"
+              />
+            </div>
           </div>
         )}
 
@@ -513,6 +595,12 @@ export default function CashierPage() {
             <span className="text-slate-500">Pajak</span>
             <span>Rp{totals.taxTotal.toLocaleString("id-ID")}</span>
           </div>
+          {businessMode === "restoran" && totals.serviceChargeTotal > 0 && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Biaya layanan</span>
+              <span>Rp{totals.serviceChargeTotal.toLocaleString("id-ID")}</span>
+            </div>
+          )}
           <div className="flex justify-between text-base font-bold text-slate-900">
             <span>Total</span>
             <span>Rp{totals.total.toLocaleString("id-ID")}</span>
@@ -520,7 +608,7 @@ export default function CashierPage() {
         </div>
 
         <div className="mt-3 flex gap-2">
-          {(["tunai", "kartu", "qris"] as const).map((m) => (
+          {(businessMode === "warung" ? (["tunai", "kartu", "qris", "hutang"] as const) : (["tunai", "kartu", "qris"] as const)).map((m) => (
             <button
               key={m}
               onClick={() => setPaymentMethod(m)}
@@ -528,10 +616,22 @@ export default function CashierPage() {
                 paymentMethod === m ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]" : "border-slate-300 text-slate-600"
               }`}
             >
-              {m}
+              {m === "hutang" ? "Hutang" : m}
             </button>
           ))}
         </div>
+
+        {paymentMethod === "hutang" && (
+          <div className="mt-3">
+            <label className="mb-1 block text-xs font-medium text-slate-600">Nama pelanggan</label>
+            <input
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="Wajib diisi untuk transaksi hutang"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+        )}
 
         {paymentMethod === "tunai" && (
           <div className="mt-3">
@@ -589,7 +689,7 @@ export default function CashierPage() {
 
         <button
           onClick={submitSale}
-          disabled={busy || cart.length === 0 || (paymentMethod === "tunai" && changeDue < 0)}
+          disabled={busy || !canSubmit}
           className="mt-4 w-full rounded-lg bg-[var(--brand-600)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-500)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "Memproses..." : "Bayar"}
