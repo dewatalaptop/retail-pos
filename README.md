@@ -277,6 +277,16 @@ cold start.
     usaha — printer perlu dihubungkan ulang kalau ganti HP/tablet kasir. Kesalahan umum (Bluetooth
     mati, Layanan Lokasi mati, izin ditolak, printer tidak ditemukan, printer terputus di tengah
     cetak) ditampilkan sebagai pesan spesifik dalam Bahasa Indonesia, bukan pesan generik.
+16. **Jenis usaha: Toko, Warung, Restoran** (halaman "Pengaturan" > kartu "Jenis usaha") — mengubah
+    fitur apa yang muncul di halaman Kasir, tanpa mengubah data yang sudah ada:
+    - **Toko** — perilaku standar, tidak berubah.
+    - **Warung** — tambahan metode bayar **Hutang/Kasbon** (wajib isi nama pelanggan), dilacak
+      lewat `transactions.customer_name`/`debt_paid_at`. Halaman **Kasbon** baru menampilkan semua
+      hutang yang belum lunas dengan tombol "Tandai lunas" (konfirmasi dua-klik).
+    - **Restoran** — nomor meja + tipe pesanan (dine-in/bawa pulang/diantar) per transaksi, catatan
+      bebas per item keranjang (bertahan lewat tahan/lanjutkan transaksi), dan biaya layanan (%)
+      yang dihitung terpisah dari pajak (`computeCartTotals` di `backend/src/lib/pricing.ts`).
+      Struk di layar maupun struk cetak Bluetooth menampilkan semuanya secara konsisten.
 
 ## Mengaktifkan iklan AdSense
 
