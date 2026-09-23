@@ -87,7 +87,7 @@ function getApp(): Promise<Express> {
   return appPromise;
 }
 
-export const api = onRequest({ region: "asia-southeast2" }, async (req, res) => {
+export const retailPosApi = onRequest({ region: "asia-southeast2" }, async (req, res) => {
   const app = await getApp();
   app(req, res);
 });
